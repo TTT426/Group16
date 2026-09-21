@@ -1,9 +1,9 @@
 # Draft AI Usage Guidelines
 
 ## Section 1 — Tool-to-Task Mapping
-* **Claude 3.5 Sonnet (via Web/API):** We will use Sonnet for drafting boilerplate endpoint logic and first-pass unit test skeletons — not for core business architecture, authentication, or payment logic, which must be authored from scratch by a human.
+* **Claude Opus (via Web/API):** We will use Opus for drafting boilerplate endpoint logic and first-pass unit test skeletons — not for core business architecture, authentication, or payment logic, which must be authored from scratch by a human.
 * **GitHub Copilot:** We will use inline autocomplete for speed while typing familiar patterns — not as a substitute for authoring PR descriptions, commit messages, or DECISIONS.md entries.
-* **Claude / LLMs for Design & Architecture:** We will use Claude to brainstorm and compare structural design options — not to make final architectural calls, which require a team sync and a recorded entry in `DECISIONS.md`.
+* **Claude Opus / LLMs for Design & Architecture:** We will use Claude to brainstorm and compare structural design options — not to make final architectural calls, which require a team sync and a recorded entry in `DECISIONS.md`.
 * **Documentation:** We will use Claude to draft initial API docstrings and markdown formatting — a human must review, verify accuracy against implementation, and edit before merging.
 
 ## Section 2 — Interaction Logging & Documentation

@@ -1,7 +1,7 @@
 # Draft Evaluation Plan
 
 ## Problem Grounding
-1. **Target Persona:** Undergraduate student team leaders working on collaborative software engineering projects with 4+ team members.
+1. **Target Persona:** Undergraduate student team leaders working on collaborative software engineering projects with 4 team members.
 2. **Current Workaround:** They currently rely on fragmented communication across LINE/Discord channels, manually chase members for PR progress, and reconcile merge conflicts reactively over spreadsheet logs.
 3. **Observable Change:** PR review bottlenecks and stale branches will decrease observably; handoff blockers will be resolved within 24 hours without manual follow-up reminders.
 
