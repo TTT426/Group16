@@ -1,12 +1,88 @@
 # Draft Evaluation Plan
 
 ## Problem Grounding
-1. **Target Persona:** Undergraduate student team leaders working on collaborative software engineering projects with 4 team members.
-2. **Current Workaround:** They currently rely on fragmented communication across LINE/Discord channels, manually chase members for PR progress, and reconcile merge conflicts reactively over spreadsheet logs.
-3. **Observable Change:** PR review bottlenecks and stale branches will decrease observably; handoff blockers will be resolved within 24 hours without manual follow-up reminders.
 
-## Evaluation Plan Draft
-* **Success Definition & Human-AI Boundary:** We will know our tool works if team members can complete task handoffs and PR reviews with at least a 30% reduction in coordination turnaround time. *(Human-AI Boundary: Human-in-the-loop — AI acts purely as an assistive summarizer/recommender; humans retain full approval authority over all repository actions).*
-* **Target Users:** 2–3 student project teams in our department courses; accessed through direct peer outreach and lab session recruiting.
-* **Method:** Structured observation of a simulated 20-minute pull request workflow, followed by a 5-minute semi-structured interview.
-* **Minimum Evidence Threshold:** At least 2 teams independently complete a mock merge workflow using our tool without external intervention and confirm in the interview that task context was clear.
+### Target Persona
+
+Undergraduate student team leaders working on collaborative software
+engineering projects in teams of four.
+
+### Current Problem
+
+Teams currently coordinate pull-request reviews and task handoffs through
+fragmented LINE or Discord messages. Team leaders must manually ask members for
+progress, identify stale branches, and reconcile conflicting spreadsheet
+records.
+
+### Observable Change
+
+If the proposed tool works:
+
+- Teams will complete task handoffs and PR reviews faster.
+- Fewer reminder messages will be required.
+- Participants will correctly identify the current task owner and blocker.
+- Review blockers will be identified without help from the test facilitator.
+
+## Evaluation Plan
+
+### Success Definition and Human–AI Boundary
+
+The primary success metric is coordination turnaround time: the time from when
+a mock pull request is declared ready for review until the team correctly
+identifies the reviewer, blocker, and next action.
+
+Each team will first complete a baseline workflow using its current
+LINE/Discord and spreadsheet process. The same team will then complete an
+equivalent workflow using the prototype. The tasks will contain different but
+comparable names and blockers.
+
+The percentage improvement will be calculated as:
+
+`(baseline median time - prototype median time) / baseline median time * 100`
+
+The prototype will be considered successful if the median coordination
+turnaround time is at least 30% lower than the baseline.
+
+AI acts only as an assistive summarizer or recommender. Humans retain authority
+over reviewer assignment, approval, merge, and all other repository actions.
+
+### Target Users
+
+We will recruit two or three student project teams from department courses.
+Each team should contain approximately four members and have previous
+experience using GitHub pull requests for a group project.
+
+### Method
+
+1. Give each team a simulated pull-request scenario containing an assigned
+   reviewer, a stale branch, and one unresolved blocker.
+2. Ask the team to resolve the scenario using its normal communication process.
+3. Record completion time, number of reminder messages, incorrect assignments,
+   and requests for facilitator help.
+4. Give the team an equivalent scenario using the prototype.
+5. Record the same measurements.
+6. Conduct a five-minute semi-structured interview after both scenarios.
+7. Ask each participant to rate the statement “I could clearly identify the
+   task owner, blocker, and next action” on a five-point scale.
+
+To reduce practice effects, scenario details will differ between the baseline
+and prototype tasks. If more than two teams participate, half will use the
+prototype first and half will use the existing process first.
+
+### Minimum Evidence Threshold
+
+We will not claim preliminary success unless:
+
+- At least two teams, with at least eight participants total, complete both
+  workflows.
+- Every team completes the prototype workflow without facilitator
+  intervention.
+- Prototype median coordination time is at least 30% lower than baseline
+  median time.
+- At least six of eight participants rate task context clarity as 4 or 5 out
+  of 5.
+- No critical failure causes an incorrect merge or loss of task information.
+
+If any threshold is missed, we will report the result as inconclusive or
+unsuccessful and document the observed failure rather than changing the
+threshold after testing.

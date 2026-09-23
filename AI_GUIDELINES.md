@@ -1,20 +1,101 @@
 # Draft AI Usage Guidelines
 
-## Section 1 — Tool-to-Task Mapping
-* **Claude Opus (via Web/API):** We will use Opus for drafting boilerplate endpoint logic and first-pass unit test skeletons — not for core business architecture, authentication, or payment logic, which must be authored from scratch by a human.
-* **GitHub Copilot:** We will use inline autocomplete for speed while typing familiar patterns — not as a substitute for authoring PR descriptions, commit messages, or DECISIONS.md entries.
-* **Claude Opus / LLMs for Design & Architecture:** We will use Claude to brainstorm and compare structural design options — not to make final architectural calls, which require a team sync and a recorded entry in `DECISIONS.md`.
-* **Documentation:** We will use Claude to draft initial API docstrings and markdown formatting — a human must review, verify accuracy against implementation, and edit before merging.
+## Section 1 — Tools and Allowed Uses
 
-## Section 2 — Interaction Logging & Documentation
-* **Prompt Engineering Log (`docs/prompts/`):** Any prompt that generates code, test suites, or documentation that ends up committed to the repository must be logged (prompt text, model used, and what was manually adapted). One-off syntax checks and debugging questions do not require logging.
-* **PR Descriptions:** The PR description template must explicitly note whether AI was involved. If used, it must cite the tool and point to the corresponding log entry.
-* **DECISIONS.md:** If an AI interaction suggests a change in architectural approach, data schema, or library choice that the team adopts, it must be recorded as an ADR in `DECISIONS.md`, not just left in a prompt log.
+### ChatGPT or Claude
 
-## Section 3 — Disagreements & Quality Standards
-* **Final Authority:** If team members disagree on whether AI-generated code meets standards, the **Code Steward** holds the final decision (not the prompt author or senior member).
-* **Required Evidence for Merge:**
-  1. Passes all existing automated test suites and linters.
-  2. Complies with the PR review checklist.
-  3. The implementation can be clearly explained by a team member other than the person who prompted it.
-* **Tie-Breaking:** If the dispute is purely stylistic, existing linter rules govern. If non-stylistic, the Code Steward makes the call and documents the rationale in one sentence within `DECISIONS.md`.
+We may use ChatGPT or Claude to:
+
+- Explain unfamiliar Git commands and error messages.
+- Brainstorm implementation options.
+- Draft boilerplate code, documentation, and initial test cases.
+- Review a proposed approach and identify possible edge cases.
+
+We may not use AI as the final authority for architecture, authentication,
+payment logic, privacy decisions, or security-sensitive code. A human team
+member must understand, test, and review all generated content before it is
+merged.
+
+### GitHub Copilot
+
+GitHub Copilot may be used for inline completion of familiar and repetitive
+patterns. It must not replace human-written PR descriptions, commit messages,
+or entries in `DECISIONS.md`.
+
+### Documentation
+
+AI may produce an initial documentation draft. A team member must compare it
+with the actual implementation, correct inaccurate claims, and review the final
+version before merging.
+
+## Section 2 — Recording AI Interactions
+
+Any AI interaction that produces code, tests, documentation, or an important
+technical recommendation that enters the repository must be recorded. The
+record must include:
+
+- The tool and model, when known.
+- The original prompt or a faithful summary.
+- The relevant response or recommendation.
+- What a team member verified or changed.
+- Whether the output was accepted, modified, or rejected.
+
+One-off syntax questions do not require a full log unless their answers cause a
+significant project decision.
+
+Pull requests must state whether AI was used. If a significant AI-assisted
+choice affects architecture, data schema, dependencies, security, or team
+workflow, the final human decision and rationale must also be recorded in
+`DECISIONS.md`.
+
+### Example Interaction
+
+**Tool:** ChatGPT
+
+**Prompt:** “Explain how to create a Git branch, add a contributor file, commit
+it, push the branch, and open a pull request without modifying `main`
+directly.”
+
+**Result:** The response proposed using `git switch -c`, `git add`,
+`git commit`, and `git push -u origin <branch>`.
+
+**Human verification:** A team member checked the current branch with
+`git branch --show-current`, inspected staged changes with `git status`,
+verified the PR diff on GitHub, and waited for another member’s approval.
+
+**Decision:** Accepted after verification. The commands produced the expected
+branch and reviewed pull-request workflow.
+
+## Section 3 — Quality Standards and Disagreements
+
+AI-generated work may be merged only when:
+
+1. Existing automated tests and linters pass, when available.
+2. A human reviewer checks the changed files.
+3. The implementation can be clearly explained by a team member other than
+   the person who prompted the AI.
+4. Referenced APIs and library features are checked against official
+   documentation.
+5. No secrets, personal data, or confidential information were given to the AI.
+
+If team members disagree about AI-generated code, existing project rules and
+test evidence take priority. For stylistic disagreements, the configured
+formatter or linter decides. For non-stylistic disagreements, the Code Steward
+makes the final call and records the rationale in `DECISIONS.md`.
+
+### Accepted Output Example
+
+AI suggested the branch, commit, push, and pull-request workflow described
+above. The team accepted it only after checking the active branch, Git status,
+GitHub diff, reviewer approval, and successful merge into `main`.
+
+### Rejected Output Example
+
+During review, an AI-assisted draft initially appeared ready to approve.
+However, a human inspection of `CONTRIBUTORS.md` showed garbled characters and
+GitHub treated the file as binary. The team rejected the draft, requested a
+UTF-8 plain-text correction, and verified the repaired file with `file
+CONTRIBUTORS.md` before considering approval.
+
+These examples demonstrate that AI output is advisory. Passing human review
+and producing observable evidence are required before acceptance.
