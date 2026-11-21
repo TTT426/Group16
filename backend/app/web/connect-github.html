@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>連接 GitHub｜專案脈絡查詢</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer">評估</a>
+      <a href="/connect" aria-current="page">連接工具</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="narrow">
+    <a class="back" href="/connect">← 連接工具</a>
+    <h1>連接 GitHub</h1>
+    <ol class="steps" id="steps" aria-label="步驟">
+      <li>登入</li>
+      <li>選擇 repo</li>
+      <li>匯入</li>
+    </ol>
+
+    <!-- ============================== Step 1: sign in ============================== -->
+    <section class="panel stack" id="step-login" hidden>
+      <div>
+        <h2>登入你的 GitHub 帳號</h2>
+        <p class="muted" style="margin:0">登入後，這裡才能列出你的 repo，也才能讀取私人 repo。<b>只會讀取，不會修改任何東西</b>；登入資訊只存在你這台電腦上。</p>
+      </div>
+
+      <!-- already signed in -->
+      <div class="choice" id="signed-in" hidden>
+        <div class="row"><div id="signed-in-who" style="flex:1"></div><button class="link-button" type="button" id="switch-account">換一個帳號</button></div>
+        <div class="row" style="margin-top:0.75rem"><button class="primary big" type="button" id="continue-signed-in">用這個帳號繼續 →</button></div>
+      </div>
+
+      <div id="login-options" hidden>
+        <!-- A: Sign in with GitHub (device flow) -->
+        <div id="opt-device" hidden>
+          <button class="primary big" type="button" id="device-start">使用 GitHub 登入</button>
+          <p class="muted small" style="margin:0.4rem 0 0">會顯示一組代碼，你只要在 GitHub 網頁上輸入它並按「Authorize」。</p>
+
+          <div class="choice" id="device-panel" style="margin-top:0.9rem" hidden>
+            <h3>1. 複製這組代碼</h3>
+            <div class="row" style="margin:0.4rem 0 1rem"><span class="device-code" id="device-code">—</span><button type="button" id="device-copy">複製</button></div>
+            <h3>2. 打開 GitHub，貼上代碼後按「Continue」</h3>
+            <div class="row" style="margin:0.4rem 0"><a class="button primary" id="device-open" target="_blank" rel="noopener">開啟 GitHub ↗</a></div>
+            <figure id="fig-device"></figure>
+            <h3 style="margin-top:1rem">3. 按綠色的「Authorize」按鈕</h3>
+            <figure id="fig-authorize"></figure>
+            <p class="notice" id="device-status" style="margin:1rem 0 0"></p>
+          </div>
+        </div>
+
+        <!-- B: the GitHub CLI login already on this computer -->
+        <div id="opt-cli" hidden>
+          <div class="or" id="or-cli">或</div>
+          <div class="choice">
+            <h3>使用這台電腦上已登入的 GitHub 帳號</h3>
+            <p class="muted small" style="margin:0 0 0.6rem">偵測到 GitHub CLI（<code>gh</code>）已經登入為 <b id="cli-user"></b>。</p>
+            <button type="button" id="use-cli">使用這個帳號</button>
+          </div>
+        </div>
+
+        <!-- C: personal access token -->
+        <div class="or" id="or-token">或</div>
+        <details id="opt-token">
+          <summary>改用 Personal access token 登入</summary>
+          <div class="choice" style="margin-top:0.6rem">
+            <ol class="how">
+              <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">開啟 GitHub 的「建立 token」頁面 ↗</a></li>
+              <li><b>Token name</b> 隨意填（例如 Group16），<b>Expiration</b> 選一個期限。</li>
+              <li><b>Repository access</b> 選「Only select repositories」，再選你要匯入的 repo。</li>
+              <li>在 <b>Permissions → Repository permissions</b>，把下面三項設成 <b>Read-only</b>：</li>
+            </ol>
+            <figure id="fig-permissions"></figure>
+            <ol class="how" start="5">
+              <li>拉到最下面按 <b>Generate token</b>，複製產生的 token（開頭是 <code>github_pat_</code>），貼到這裡：</li>
+            </ol>
+            <div class="row">
+              <input style="flex:1;min-width:0" type="password" id="token-input" placeholder="github_pat_…" autocomplete="off" aria-label="Personal access token">
+              <button class="primary" type="button" id="token-save">登入</button>
+            </div>
+          </div>
+        </details>
+
+        <p class="small" style="margin:1.25rem 0 0"><button class="link-button" type="button" id="skip-login">只要匯入公開 repo？不登入，直接下一步 →</button></p>
+      </div>
+      <p class="notice error" id="login-error" hidden></p>
+    </section>
+
+    <!-- ============================== Step 2: choose repo ============================== -->
+    <section class="panel stack" id="step-repo" hidden>
+      <div>
+        <h2>選擇要匯入的 repo</h2>
+        <p class="muted" style="margin:0">選你們團隊用來開發和討論的 repo，之後可以隨時更改。</p>
+      </div>
+      <div id="repo-list-box">
+        <input type="search" id="repo-filter" placeholder="搜尋你的 repo…" aria-label="搜尋 repo">
+        <div class="repo-list" id="repo-list" role="radiogroup" aria-label="你的 repo" style="margin-top:0.6rem"></div>
+      </div>
+      <p class="notice" id="repo-anon" hidden>你沒有登入，所以只能匯入<b>公開</b> repo。<button class="link-button" type="button" id="repo-go-login">登入 GitHub</button></p>
+      <div>
+        <div class="or" style="margin-top:0">或直接輸入</div>
+        <input type="text" id="repo-input" placeholder="owner/repo，或貼上 repo 的網址（https://github.com/owner/repo）" aria-label="repo">
+      </div>
+      <p class="notice error" id="repo-error" hidden></p>
+      <div class="actions">
+        <button type="button" id="repo-back">← 上一步</button>
+        <button class="primary" type="button" id="repo-next" disabled>下一步 →</button>
+      </div>
+    </section>
+
+    <!-- ============================== Step 3: import ============================== -->
+    <section class="panel" id="step-import" hidden>
+      <h2>匯入 <span id="import-repo"></span></h2>
+      <p style="margin:0">會讀取這個 repo 的：</p>
+      <ul class="checks">
+        <li>Issues 和留言</li>
+        <li>Pull requests、留言和 code review 意見</li>
+        <li>Repo 裡的 Markdown 文件（README、docs 等，最多 200 個）</li>
+      </ul>
+      <p class="muted small">只會讀取，不會修改 repo。匯入的是現在的內容；之後有新的 issue 或 PR，到「連接工具」按「重新匯入」即可。</p>
+      <p class="notice" id="import-status" hidden></p>
+      <div class="actions" id="import-actions">
+        <button type="button" id="import-back">← 上一步</button>
+        <button class="primary big" type="button" id="import-start">開始匯入</button>
+      </div>
+      <div class="actions" id="done-actions" hidden>
+        <a class="button" href="/connect">回到連接工具</a>
+        <a class="button primary" href="/">開始查詢 →</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
+
+    const $ = (id) => document.getElementById(id);
+    const post = (path, body) => api(path, { method: "POST", body: body || {} });
+    const waiting = (text) => h("span", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), text);
+
+    function note(id, content, kind) {
+      const el = $(id);
+      if (kind !== undefined) el.className = "notice " + kind;
+      el.hidden = !content;
+      el.replaceChildren(...(content ? [content] : []));
+    }
+    async function busy(button, fn) { button.disabled = true; try { await fn(); } finally { button.disabled = false; } }
+
+    let account = null;
+
+    /* ---------------------------------------------------------------- steps */
+    const ORDER = ["login", "repo", "import"];
+    function go(step) {
+      const i = ORDER.indexOf(step);
+      ORDER.forEach((s) => ($("step-" + s).hidden = s !== step));
+      [...$("steps").children].forEach((li, j) => {
+        li.className = j < i ? "done" : "";
+        if (j === i) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+      });
+      if (step === "repo") loadRepos();
+      window.scrollTo({ top: 0 });
+    }
+
+    /* ---------------------------------------------------------------- illustrations of GitHub's pages */
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    function frame(url, inner, label) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 250" role="img" aria-label="${label}">
+        <rect class="ill-frame" x="1" y="1" width="558" height="248" rx="10"/>
+        <rect class="ill-bar" x="1.5" y="1.5" width="557" height="30" rx="9"/>
+        <circle class="ill-dot" cx="18" cy="16" r="5"/><circle class="ill-dot" cx="34" cy="16" r="5"/><circle class="ill-dot" cx="50" cy="16" r="5"/>
+        ${url ? `<rect class="ill-box" x="70" y="9" width="300" height="15" rx="7"/><text class="ill-muted" x="80" y="20.5" font-size="10">${url}</text>` : ""}
+        ${inner}</svg><figcaption>示意圖：${label}（實際畫面可能略有不同）</figcaption>`;
+    }
+    function figDevice(code) {
+      const chars = code.replace("-", "").padEnd(8, " ").slice(0, 8).split("");
+      const boxes = chars.map((c, i) => {
+        const x = 92 + i * 40 + (i >= 4 ? 28 : 0);
+        return `<rect class="ill-box" x="${x}" y="112" width="32" height="40" rx="6"/>
+          <text class="ill-text" x="${x + 16}" y="139" text-anchor="middle" font-size="18" font-weight="600">${esc(c)}</text>`;
+      }).join("");
+      return frame("github.com/login/device", `
+        <text class="ill-text" x="280" y="72" text-anchor="middle" font-size="20" font-weight="700">Device Activation</text>
+        <text class="ill-muted" x="280" y="96" text-anchor="middle" font-size="13">Enter the code displayed on your device</text>
+        ${boxes}<text class="ill-muted" x="${92 + 4 * 40 + 10}" y="138" font-size="18">–</text>
+        <rect class="ill-green" x="200" y="176" width="160" height="38" rx="8"/>
+        <text class="ill-white" x="280" y="200" text-anchor="middle" font-size="15">Continue</text>
+        <rect class="ill-ring" x="192" y="168" width="176" height="54" rx="12"/>
+        <text class="ill-note" x="384" y="201" font-size="14">← 貼上代碼後按這裡</text>`, "在 GitHub 的 Device Activation 頁面貼上代碼");
+    }
+    function figAuthorize() {
+      return frame("github.com/login/oauth/authorize", `
+        <text class="ill-text" x="280" y="70" text-anchor="middle" font-size="19" font-weight="700">Authorize Group16 Context Engine</text>
+        <rect class="ill-line" x="150" y="92" width="260" height="8" rx="4"/><rect class="ill-line" x="180" y="110" width="200" height="8" rx="4"/>
+        <rect class="ill-line" x="165" y="128" width="230" height="8" rx="4"/>
+        <rect class="ill-box" x="120" y="170" width="120" height="38" rx="8"/><text class="ill-text" x="180" y="194" text-anchor="middle" font-size="14">Cancel</text>
+        <rect class="ill-green" x="256" y="170" width="184" height="38" rx="8"/>
+        <text class="ill-white" x="348" y="194" text-anchor="middle" font-size="14">Authorize</text>
+        <rect class="ill-ring" x="248" y="162" width="200" height="54" rx="12"/>
+        <text class="ill-note" x="348" y="236" text-anchor="middle" font-size="14">↑ 按這裡</text>`, "在授權頁面按綠色的 Authorize 按鈕");
+    }
+    function figPermissions() {
+      const rows = [["Contents", true], ["Issues", true], ["Pull requests", true], ["Metadata", false]].map(([name, pick], i) => {
+        const y = 76 + i * 40;
+        return `<text class="ill-text" x="40" y="${y + 20}" font-size="14" font-weight="600">${name}</text>
+          <rect class="ill-box" x="340" y="${y + 2}" width="150" height="28" rx="6"/>
+          <text class="ill-text" x="352" y="${y + 21}" font-size="13">Read-only ▾</text>
+          ${pick ? `<rect class="ill-ring" x="334" y="${y - 4}" width="162" height="40" rx="9"/>` : `<text class="ill-muted" x="500" y="${y + 21}" font-size="11">自動</text>`}`;
+      }).join("");
+      return frame("", `<text class="ill-text" x="40" y="58" font-size="16" font-weight="700">Repository permissions</text>${rows}`,
+        "Repository permissions 裡把三項設成 Read-only（Metadata 會自動選好）");
+    }
+    $("fig-permissions").innerHTML = figPermissions();
+    $("fig-authorize").innerHTML = figAuthorize();
+
+    /* ---------------------------------------------------------------- step 1: sign in */
+    function renderAccount() {
+      const ok = !!(account && !account.error);
+      $("signed-in").hidden = !ok;
+      $("login-options").hidden = ok;
+      if (ok) {
+        $("signed-in-who").replaceChildren(
+          account.avatar_url ? h("img", { class: "avatar", src: account.avatar_url + "&s=40", alt: "" }) : "",
+          h("b", {}, account.name), ` (@${account.login})`,
+          h("div", { class: "muted small" }, account.via === "gh" ? "使用這台電腦上 GitHub CLI 的登入" : "已登入"));
+      } else if (account && account.error) {
+        note("login-error", account.error, "");
+      }
+    }
+    function signedIn(acc) { account = acc; note("login-error", ""); renderAccount(); go("repo"); }
+
+    async function initLogin() {
+      const o = await api("/api/github/login-options");
+      account = o.account;
+      $("opt-device").hidden = !o.device_flow;
+      $("opt-cli").hidden = !o.gh_cli_user;
+      $("or-cli").hidden = !o.device_flow;
+      $("or-token").hidden = !(o.device_flow || o.gh_cli_user);
+      if (o.gh_cli_user) {
+        $("cli-user").textContent = "@" + o.gh_cli_user;
+        $("use-cli").textContent = `使用 @${o.gh_cli_user}`;
+      }
+      $("opt-token").open = !o.device_flow && !o.gh_cli_user;  // the only way left: show its steps right away
+      renderAccount();
+    }
+
+    $("continue-signed-in").addEventListener("click", () => go("repo"));
+    $("switch-account").addEventListener("click", (e) => busy(e.target, async () => {
+      await post("/api/github/logout"); account = null; renderAccount();
+    }));
+    $("skip-login").addEventListener("click", () => go("repo"));
+    $("use-cli").addEventListener("click", (e) => busy(e.target, async () => {
+      try { signedIn((await post("/api/github/login/gh-cli")).account); } catch (err) { note("login-error", err.message, "error"); }
+    }));
+    $("token-save").addEventListener("click", (e) => busy(e.target, async () => {
+      try { signedIn((await post("/api/github/login/token", { token: $("token-input").value })).account); $("token-input").value = ""; }
+      catch (err) { note("login-error", err.message, "error"); }
+    }));
+
+    let pollTimer = null;
+    $("device-start").addEventListener("click", (e) => busy(e.target, async () => {
+      clearTimeout(pollTimer);
+      note("login-error", "");
+      let flow;
+      try { flow = await post("/api/github/login/start"); } catch (err) { return note("login-error", err.message, "error"); }
+      $("device-panel").hidden = false;
+      $("device-code").textContent = flow.user_code;
+      $("device-open").href = flow.verification_uri;
+      $("fig-device").innerHTML = figDevice(flow.user_code);
+      note("device-status", waiting("等待你在 GitHub 上完成授權…（這個頁面會自動往下一步）"), "ok");
+      let interval = flow.interval;
+      const poll = async () => {
+        let r;
+        try { r = await post("/api/github/login/poll", { flow_id: flow.flow_id }); }
+        catch (err) { return note("device-status", err.message, "error"); }
+        if (r.status === "ok") { note("device-status", "登入成功！", "ok"); return signedIn(r.account); }
+        if (r.status === "expired") return note("device-status", "代碼已過期，請再按一次「使用 GitHub 登入」。", "");
+        if (r.status === "denied") return note("device-status", "你在 GitHub 上取消了授權。要重試請再按一次「使用 GitHub 登入」。", "");
+        if (r.status === "slow_down") interval += 5;
+        pollTimer = setTimeout(poll, interval * 1000);
+      };
+      pollTimer = setTimeout(poll, interval * 1000);
+    }));
+    async function copyCode() {
+      try { await navigator.clipboard.writeText($("device-code").textContent); $("device-copy").textContent = "已複製 ✓"; } catch { /* clipboard blocked */ }
+    }
+    $("device-copy").addEventListener("click", copyCode);
+    $("device-open").addEventListener("click", copyCode);  // copy automatically when opening GitHub
+
+    /* ---------------------------------------------------------------- step 2: repo */
+    let repos = [], chosen = "";
+    function choose(name) { chosen = name; $("repo-next").disabled = !chosen; note("repo-error", ""); }
+    function renderRepos() {
+      const q = $("repo-filter").value.trim().toLowerCase();
+      const shown = repos.filter((r) => !q || r.full_name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
+      const list = $("repo-list");
+      if (!shown.length) {
+        return list.replaceChildren(h("p", { class: "repo-option muted" }, repos.length ? "沒有符合的 repo。" : "你的帳號沒有任何 repo。"));
+      }
+      list.replaceChildren(...shown.slice(0, 200).map((r) => {
+        const radio = h("input", { type: "radio", name: "repo", value: r.full_name, checked: r.full_name === chosen });
+        radio.addEventListener("change", () => { $("repo-input").value = ""; choose(r.full_name); });
+        return h("label", { class: "repo-option" }, radio, h("div", { style: "flex:1;min-width:0" },
+          h("div", { class: "row" }, h("span", { class: "name" }, r.full_name),
+            h("span", { class: "chip" + (r.private ? " warn" : "") }, r.private ? "Private" : "Public")),
+          r.description ? h("div", { class: "desc" }, r.description) : null,
+          r.updated_at ? h("div", { class: "desc" }, "更新於 " + r.updated_at.slice(0, 10)) : null));
+      }));
+    }
+    async function loadRepos() {
+      const signed = !!(account && !account.error);
+      $("repo-list-box").hidden = !signed;
+      $("repo-anon").hidden = signed;
+      if (!signed) return;
+      $("repo-list").replaceChildren(h("p", { class: "repo-option" }, waiting("讀取你的 repo…")));
+      try { repos = (await api("/api/github/repos")).repos; renderRepos(); }
+      catch (err) { $("repo-list").replaceChildren(h("p", { class: "repo-option muted" }, err.message)); }
+    }
+    $("repo-filter").addEventListener("input", renderRepos);
+    $("repo-input").addEventListener("input", () => {
+      document.querySelectorAll("#repo-list input[type=radio]").forEach((r) => (r.checked = false));
+      choose($("repo-input").value.trim());
+    });
+    $("repo-go-login").addEventListener("click", () => go("login"));
+    $("repo-back").addEventListener("click", () => go("login"));
+    $("repo-next").addEventListener("click", (e) => busy(e.target, async () => {
+      try {
+        const r = await post("/api/github/repo", { repo: chosen });
+        $("import-repo").textContent = r.repo.full_name;
+        go("import");
+      } catch (err) { note("repo-error", err.message, "error"); }
+    }));
+
+    /* ---------------------------------------------------------------- step 3: import */
+    $("import-back").addEventListener("click", () => go("repo"));
+    $("import-start").addEventListener("click", (e) => busy(e.target, async () => {
+      $("import-back").disabled = true;
+      note("import-status", waiting("匯入中… repo 越大越久，通常不到一分鐘。請不要關閉這個頁面。"), "ok");
+      try {
+        const r = await post("/api/github/import");
+        note("import-status", `完成！讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落），現在可以查詢了。`, "ok");
+        $("import-actions").hidden = true;
+        $("done-actions").hidden = false;
+        [...$("steps").children].forEach((li) => { li.className = "done"; li.removeAttribute("aria-current"); });
+        loadStatus($("status"));
+      } catch (err) { note("import-status", err.message, "error"); }
+      finally { $("import-back").disabled = false; }
+    }));
+
+    loadStatus($("status"));
+    initLogin().then(() => go("login")).catch((err) => { go("login"); note("login-error", err.message, "error"); });
+  </script>
+</body>
+</html>

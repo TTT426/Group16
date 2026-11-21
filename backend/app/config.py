@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Connectors
     github_token: str = ""
     github_repo: str = ""  # owner/repo
+    github_use_gh_cli: bool = False  # use the GitHub CLI login (`gh auth login`) when no token is saved
+    # OAuth App client id for "Sign in with GitHub" (device flow). Public value, no secret needed.
+    github_client_id: str = ""
     github_include_markdown: bool = True
     notion_token: str = ""  # the integration only sees pages explicitly shared with it
     notion_parent_page_id: str = ""  # seeding only: page under which the scenario pages are created
