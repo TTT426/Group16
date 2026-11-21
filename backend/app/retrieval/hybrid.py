@@ -14,6 +14,7 @@ from threading import Lock
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..connectors.base import github_external_id
 from ..db.models import Chunk, Document
 from ..embeddings.base import Embedder
 from .bm25 import BM25
@@ -202,11 +203,13 @@ class HybridRetriever:
         return extra
 
     def _resolve(self, ref: DocRef, *, citing_url: str) -> int | None:
-        rows = self.session.execute(
-            select(Document.id, Document.url)
-            .where(Document.source == ref.source, Document.external_id.in_(ref.external_ids))
-        ).all()
-        if ref.source == "github":
+        ids = ref.external_ids
+        if ref.source == "github":  # stored GitHub ids are scoped by repo
             repo = ref.repo or github_repo_of(citing_url)
-            rows = [r for r in rows if repo is None or github_repo_of(r.url) == repo]
-        return rows[0].id if rows else None
+            if repo is None:
+                return None
+            ids = tuple(github_external_id(repo, i) for i in ids)
+        row = self.session.execute(
+            select(Document.id).where(Document.source == ref.source, Document.external_id.in_(ids)).limit(1)
+        ).first()
+        return row.id if row else None

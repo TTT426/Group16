@@ -36,3 +36,8 @@ def parse_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def github_external_id(repo: str, item: str) -> str:
+    """GitHub ids include the repo ('acme/shop#issue:1'), so several repos never overwrite each other."""
+    return f"{repo.lower()}#{item}"

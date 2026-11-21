@@ -67,7 +67,7 @@ def test_link_expansion_pulls_in_referenced_document(db_session, embedder):
     docs = [
         NormalizedDocument(source="discord", external_id="thread:1", url="https://discord.com/channels/9/1",
                            title="討論", text="原因找到了，修正在 https://github.com/acme/shop/pull/5"),
-        NormalizedDocument(source="github", external_id="pr:5", url="https://github.com/acme/shop/pull/5",
+        NormalizedDocument(source="github", external_id="acme/shop#pr:5", url="https://github.com/acme/shop/pull/5",
                            title="Pull request #5: unrelated words", text="zzz qqq"),
     ]
     ingest_documents(db_session, docs, embedder)

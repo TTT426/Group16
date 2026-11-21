@@ -72,15 +72,16 @@ async def test_full_mode_falls_back_to_rag_when_too_large(db_session, embedder, 
 
 async def test_agent_mode_searches_exported_workspace(db_session, embedder, ingested, tmp_path):
     def agent(system, user):
-        return json.dumps({"sections": [{"text": "修正在 PR。", "sources": ["./github/pr-5.md", "discord/missing.md"]}],
+        sources = ["./github/example-shoplite-pr-5.md", "discord/missing.md"]
+        return json.dumps({"sections": [{"text": "修正在 PR。", "sources": sources}],
                            "unanswerable": False, "confidence": "medium"})
 
     provider = FakeProvider(agent)
     result = await make_service(db_session, embedder, provider, tmp_path).answer("付款失敗怎麼修的？", "agent")
     workspace = provider.workspaces[0]
-    assert workspace == tmp_path / "ws" and (workspace / "github" / "pr-5.md").exists()
+    assert workspace == tmp_path / "ws" and (workspace / "github" / "example-shoplite-pr-5.md").exists()
     assert "Grep" in provider.calls[0][0]
-    assert result.sections[0]["sources"] == ["github/pr-5.md"]
+    assert result.sections[0]["sources"] == ["github/example-shoplite-pr-5.md"]
     assert result.sources[0]["url"] == "https://github.com/example/shoplite/pull/5"
     assert result.dropped_citations == ["discord/missing.md"]
 
