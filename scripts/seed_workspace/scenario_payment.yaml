@@ -1,0 +1,123 @@
+# 模擬工作區情境 A：付款失敗 bug
+# 專案「ShopLite」與金流商「PayNow」都是虛構的。
+#
+# 交叉引用格式：{{<tool>.<type>.<key>}}，例如 {{github.pull.fix-idem-key}}。
+# seed 腳本在建立各工具內容後，會把它換成真正的 URL / 編號。
+# 正確答案的資訊刻意分散在三個工具，避免只看單一工具就能答對。
+
+id: payment-failure
+project: ShopLite
+task: >
+  找出「信用卡付款失敗」bug 的原因，並說明目前的處理方式為什麼這樣選。
+
+answer_key:
+  cause:
+    - v1.4 前端加了「逾時自動重試」，重試會再送一次 POST /checkout
+    - 後端每次請求都產生新的 idempotency key（order_id + timestamp），所以 PayNow 把重試當成新交易
+    - PayNow 的風控規則在 30 秒內偵測到同一張卡第二筆交易就回 PAYMENT_DUPLICATE，使用者看到付款失敗（但第一筆其實可能已經扣款）
+  current_approach:
+    - idempotency key 改成每筆訂單固定（order:{order_id}），由後端產生
+    - 重試前先 GET 查詢付款狀態，已成功就直接回傳結果，不會再建立新交易
+  why:
+    - Notion 金流規格要求 key 由 server 端產生、每筆訂單固定（PayNow 會保留 24 小時）
+    - 沒有直接拿掉前端重試，是因為行動網路慢的使用者會更常失敗（PR 討論）
+    - 先查狀態可以避免重複扣款
+  sources: [discord.thread.payment-fail, github.pull.fix-idem-key, notion.page.payment-spec]
+
+github:
+  issues:
+    - key: payment-bug
+      title: "Checkout 偶發付款失敗：PAYMENT_DUPLICATE"
+      author: amy-qa
+      labels: [bug, payment, P1]
+      body: |
+        v1.4 上線後，大約 3% 的信用卡結帳失敗，錯誤碼是 PayNow 回的 `PAYMENT_DUPLICATE`。
+        在 4G 弱網環境比較容易重現。部分使用者反映「顯示失敗但卡片被扣款」。
+        重現步驟：Chrome DevTools 把網路調成 Slow 3G → 結帳 → 約 1/3 機率失敗。
+      comments:
+        - author: kevin-backend
+          body: "看起來跟 v1.4 的變動有關，我在 Discord #backend 開個 thread 討論。"
+    - key: refund-rounding
+      title: "退款金額小數點四捨五入錯誤"
+      author: amy-qa
+      labels: [bug, payment]
+      body: "部分退款時，金額 199.5 被退成 199。跟 PayNow 的整數金額欄位有關。"
+  pulls:
+    - key: fix-idem-key
+      title: "fix(payment): 每筆訂單固定 idempotency key，重試前先查詢付款狀態"
+      author: kevin-backend
+      body: |
+        Fixes {{github.issue.payment-bug}}
+
+        ## 原因
+        前端在 v1.4 加了 axios 逾時重試，但後端的 idempotency key 是 `order_id + timestamp`，
+        每次重試都是新 key，PayNow 就把它當成新交易。詳細討論見 {{discord.thread.payment-fail}}。
+
+        ## 修改
+        - key 改成 `order:{order_id}`，在後端產生（符合 {{notion.page.payment-spec}}）
+        - 建立交易前先呼叫 `GET /payments/{key}`，如果已經成功就直接回傳
+        - 新增單元測試：同一張訂單重試 3 次只會建立 1 筆交易
+      comments:
+        - author: lisa-senior
+          body: |
+            我考慮過直接把前端重試拿掉，但弱網使用者的結帳成功率會掉更多（上個月 4G 使用者佔 40%）。
+            保留重試、讓後端做到 idempotent 才是比較正確的解法。Approve。
+        - author: kevin-backend
+          body: "收到，順便補了 log，之後要追 PAYMENT_DUPLICATE 會比較容易。"
+  files:
+    - path: docs/DEPLOY.md
+      content: |
+        # 部署流程
+        main 分支合併後由 GitHub Actions 自動部署到 staging，正式環境需要手動核准。
+
+notion:
+  pages:
+    - key: payment-spec
+      title: "金流整合規格（PayNow）"
+      content: |
+        # 金流整合規格（PayNow）
+        ## 交易建立
+        - 金額單位：新台幣整數元
+        - 每筆交易必須帶 `Idempotency-Key` header
+        ## Idempotency 規則
+        - **Key 必須由 server 端產生，每筆訂單固定**，不可以每次請求都換
+        - PayNow 會保留 key 24 小時；同一個 key 重送會回傳原本的交易結果
+        - PayNow 風控：同一張卡 30 秒內出現第二筆「不同 key」的交易，會回 `PAYMENT_DUPLICATE`
+        ## 錯誤處理
+        - 逾時不代表失敗，重試前應該先查詢交易狀態
+    - key: onboarding
+      title: "新人 Onboarding 清單"
+      content: |
+        # 新人 Onboarding 清單
+        1. 申請 GitHub / Notion / Discord 權限
+        2. 閱讀《系統架構總覽》
+        3. 在本機跑起 ShopLite（見 README）
+
+discord:
+  channels:
+    - name: backend
+      threads:
+        - key: payment-fail
+          title: "PAYMENT_DUPLICATE 調查"
+          messages:
+            - author: kevin-backend
+              content: "issue {{github.issue.payment-bug}} 的 PAYMENT_DUPLICATE，有人知道 v1.4 改了什麼嗎？"
+            - author: tom-frontend
+              content: "v1.4 我在 checkout 加了 axios-retry，逾時 8 秒會自動重送一次 POST /checkout。"
+            - author: kevin-backend
+              content: "找到了。我們的 idempotency key 是 order_id + timestamp，重送就變成新的 key。PayNow 看到同一張卡 30 秒內兩筆不同 key 的交易，就判定 duplicate。"
+            - author: lisa-senior
+              content: "而且第一筆可能已經成功扣款了，所以才會有『顯示失敗但被扣款』。規格裡寫 key 要每筆訂單固定，見 {{notion.page.payment-spec}}。"
+            - author: tom-frontend
+              content: "那我把 retry 拿掉？"
+            - author: lisa-senior
+              content: "先不要，弱網使用者會更慘。後端改成固定 key + 重試前先查狀態，我請 kevin 開 PR。"
+    - name: general
+      threads:
+        - key: deploy-chat
+          title: "週五部署"
+          messages:
+            - author: amy-qa
+              content: "週五下午可以部署 staging 嗎？"
+            - author: lisa-senior
+              content: "可以，記得先跑完 E2E 測試。"

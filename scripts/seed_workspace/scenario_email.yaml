@@ -1,0 +1,86 @@
+# 模擬工作區情境 B：訂單確認信重複寄送（難度與情境 A 相近，用於另一輪）
+# 交叉引用格式與 scenario_payment.yaml 相同。
+
+id: duplicate-email
+project: ShopLite
+task: >
+  找出「訂單確認信會重複寄送」的原因，並說明目前的處理方式為什麼這樣選。
+
+answer_key:
+  cause:
+    - 通知 worker 從 Redis Streams 讀訊息，先寄信、再 ACK
+    - worker 在寄信之後、ACK 之前被重啟（部署或 OOM），訊息會被重新投遞，信就又寄了一次
+    - Redis Streams 是 at-least-once 投遞，不保證只送一次
+  current_approach:
+    - 新增 email_log 表，(order_id, email_type) 設 unique constraint；寄信前先寫入，寫不進去代表已經寄過，直接 ACK
+    - worker 改成 graceful shutdown，部署時先處理完手上的訊息
+  why:
+    - Notion 通知服務設計文件規定：佇列是 at-least-once，consumer 必須自己做到 idempotent
+    - 有討論過換成 Kafka transactions 達成 exactly-once，但對 4 人團隊維運成本太高，所以否決（Discord 討論）
+  sources: [discord.thread.dup-email, github.pull.email-dedupe, notion.page.notify-design]
+
+github:
+  issues:
+    - key: dup-email-bug
+      title: "客戶收到兩封一樣的訂單確認信"
+      author: amy-qa
+      labels: [bug, notification, P2]
+      body: |
+        客服每週會收到約 10 件「確認信收到兩封」的反映。時間點常常落在週二、週五下午。
+      comments:
+        - author: kevin-backend
+          body: "週二、週五是部署日，懷疑跟 worker 重啟有關。"
+  pulls:
+    - key: email-dedupe
+      title: "fix(notify): 用 email_log unique constraint 去重，worker 支援 graceful shutdown"
+      author: kevin-backend
+      body: |
+        Fixes {{github.issue.dup-email-bug}}
+
+        ## 原因
+        worker 先寄信再 ACK；如果中間被重啟，Redis Streams 會重新投遞。討論見 {{discord.thread.dup-email}}。
+
+        ## 修改
+        - 新增 `email_log(order_id, email_type)` unique constraint，寄信前先 insert
+        - insert 失敗代表已經寄過 → 直接 ACK
+        - 收到 SIGTERM 時先處理完手上的訊息再結束
+        依照 {{notion.page.notify-design}} 的「consumer 必須 idempotent」原則。
+      comments:
+        - author: lisa-senior
+          body: "這樣即使以後再被重送也不會重複寄。Kafka 的方案就先不考慮了，LGTM。"
+
+notion:
+  pages:
+    - key: notify-design
+      title: "通知服務設計"
+      content: |
+        # 通知服務設計
+        ## 架構
+        - order-service 把事件寫到 Redis Streams `notify` stream
+        - notify-worker 讀取後寄送 Email / 推播
+        ## 投遞保證
+        - **at-least-once**：同一則訊息可能被投遞不只一次
+        - 所有 consumer **必須自己做到 idempotent**（建議用 unique key 去重）
+    - key: arch-overview
+      title: "系統架構總覽"
+      content: |
+        # 系統架構總覽
+        前端 Next.js、後端 FastAPI、資料庫 PostgreSQL、佇列 Redis Streams、金流 PayNow。
+
+discord:
+  channels:
+    - name: backend
+      threads:
+        - key: dup-email
+          title: "重複確認信"
+          messages:
+            - author: kevin-backend
+              content: "{{github.issue.dup-email-bug}} 我查了 log，重複的信都發生在 worker 重啟前後。"
+            - author: kevin-backend
+              content: "流程是先寄信、再 XACK。寄完還沒 ACK 就被 kill，訊息會被重新 claim，就又寄一次。"
+            - author: tom-frontend
+              content: "換 Kafka 用 transactions 做 exactly-once？"
+            - author: lisa-senior
+              content: "Kafka 對我們 4 個人來說維運太重了。設計文件本來就寫 consumer 要 idempotent，見 {{notion.page.notify-design}}。用 DB unique key 去重就好。"
+            - author: kevin-backend
+              content: "OK，我加 email_log 表，順便讓 worker 支援 graceful shutdown。"
