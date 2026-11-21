@@ -9,6 +9,7 @@ Steps:
 Options:
   --port N        first port to try (default: $PORT or 8001; the next free one is used if taken)
   --minimal       skip the embedding model (keyword-style search only, smallest install)
+  --dev           also install development tools (pytest and ruff)
   --reset         delete the local database and load the scenarios again
   --no-browser    do not open the browser
   --reload        restart the server when code changes (for development)
@@ -41,8 +42,13 @@ def run(cmd: list[str], env: dict | None = None) -> bool:
     return subprocess.run(cmd, cwd=REPO, env=env).returncode == 0
 
 
-def install(minimal: bool) -> None:
-    extras = "" if minimal else "embeddings"
+def install(minimal: bool, dev: bool = False) -> None:
+    selected_extras = []
+    if not minimal:
+        selected_extras.append("embeddings")
+    if dev:
+        selected_extras.append("dev")
+    extras = ",".join(selected_extras)
     wanted = hashlib.sha256((REPO / "pyproject.toml").read_bytes() + extras.encode()).hexdigest()
     if STAMP.exists() and STAMP.read_text().strip() == wanted:
         return
@@ -50,12 +56,16 @@ def install(minimal: bool) -> None:
     say(f"安裝套件中（{target}），第一次需要幾分鐘…")
     pip = [PY, "-m", "pip", "install", "--disable-pip-version-check", "-e"]
     if not run(pip + [target]):
-        if not extras:
+        if minimal:
             sys.exit("[group16] 套件安裝失敗，請檢查網路連線後再試一次。")
-        say("embedding 模型套件裝不起來（可能是這台電腦的平台不支援），改用精簡安裝：搜尋只比對字詞。")
-        if not run(pip + ["."]):
+        say("完整安裝失敗（原因見上方），嘗試不含 embedding 套件的精簡安裝。")
+        fallback_extras = "dev" if dev else ""
+        fallback_target = f".[{fallback_extras}]" if fallback_extras else "."
+        if not run(pip + [fallback_target]):
             sys.exit("[group16] 套件安裝失敗，請檢查網路連線後再試一次。")
-        wanted = hashlib.sha256((REPO / "pyproject.toml").read_bytes()).hexdigest()
+        wanted = hashlib.sha256(
+            (REPO / "pyproject.toml").read_bytes() + fallback_extras.encode()
+        ).hexdigest()
     STAMP.write_text(wanted)
 
 
@@ -114,12 +124,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8001)))
     parser.add_argument("--minimal", action="store_true")
+    parser.add_argument(
+        "--dev", action="store_true", help="Install development tools, including pytest and ruff"
+    )
     parser.add_argument("--reset", action="store_true")
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
 
-    install(args.minimal)
+    install(args.minimal, args.dev)
     ensure_env_file()
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     if args.minimal:
