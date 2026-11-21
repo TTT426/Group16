@@ -23,3 +23,8 @@
 **What:** 資料庫只用 SQLite 檔案（不保留 PostgreSQL 選項，不再需要 pgvector / Docker）；embedding 改成 fastembed + `BAAI/bge-small-zh-v1.5`（不需要 torch，裝不起來時自動退回 hashing），移除 sentence-transformers；`LLM_PROVIDER` 預設 `auto`；新增 `start.bat` / `start.sh` 一鍵啟動。這筆取代前面「PostgreSQL + pgvector、bge-m3」的提案內容。
 **Why:** 組員的電腦環境不同（沒有 Docker、Windows 中文路徑、Mac / Linux），原本的依賴容易裝不起來；在兩個評估情境的檢索測試中，小模型（命中 21/24）比 bge-m3（17/24）好，而且快約 10 倍。
 **Status:** 提案。細節見 `docs/PROJECT_PLAN.md` §10。
+
+## 2026-11-21 — Code steward 審閱：PR #10
+**What:** Nathan 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10)結果：核准。
+**Status** : 降低外部依賴：SQLite、fastembed、一鍵啟動
+**Led by:** @boanhsu1213
