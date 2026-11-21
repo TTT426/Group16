@@ -6,7 +6,7 @@ Stored in a single SQLite file. Embeddings are float32 blobs; similarity is comp
 from array import array
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -76,11 +76,26 @@ class Answer(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int | None] = mapped_column(ForeignKey("eval_sessions.id"))
     question: Mapped[str] = mapped_column(Text)
-    mode: Mapped[str] = mapped_column(String(16))  # ai | search
+    mode: Mapped[str] = mapped_column(String(16))  # rag | full | agent
     provider: Mapped[str | None] = mapped_column(String(32))
     model: Mapped[str | None] = mapped_column(String(64))
-    sections_json: Mapped[dict | None] = mapped_column(JSON)
+    sections_json: Mapped[dict | None] = mapped_column(JSON)  # the full answer payload returned to the UI
     latency_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CitationLabel(Base):
+    """Human judgement: does this cited source really support this answer section? (evaluation metric)"""
+
+    __tablename__ = "citation_labels"
+    __table_args__ = (UniqueConstraint("answer_id", "section_index", "source_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    answer_id: Mapped[int] = mapped_column(ForeignKey("answers.id", ondelete="CASCADE"), index=True)
+    section_index: Mapped[int] = mapped_column(Integer)
+    source_id: Mapped[str] = mapped_column(String(255))
+    supported: Mapped[bool] = mapped_column(Boolean)
+    labeled_by: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -96,7 +111,9 @@ class Decision(Base):
     status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | confirmed
     created_by: Mapped[str] = mapped_column(String(255))
     required_participants: Mapped[list[str]] = mapped_column(JSON, default=list)
+    answer_id: Mapped[int | None] = mapped_column(ForeignKey("answers.id"))  # the AI answer it was drafted from
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     confirmations: Mapped[list["DecisionConfirmation"]] = relationship(cascade="all, delete-orphan")
 
@@ -127,6 +144,8 @@ class EvalSession(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     senior_questions: Mapped[int] = mapped_column(Integer, default=0)
     score: Mapped[float | None]
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Event(Base):

@@ -4,7 +4,7 @@ Steps:
   1. install / update the project into the current virtualenv (only when pyproject.toml changed)
   2. create .env from .env.example if it does not exist
   3. create the SQLite database and load the two evaluation scenarios on first run
-  4. start the API on a free port and open http://127.0.0.1:<port>/docs in the browser
+  4. start the app on a free port and open http://127.0.0.1:<port>/ in the browser
 
 Options:
   --port N        first port to try (default: $PORT or 8001; the next free one is used if taken)
@@ -104,8 +104,8 @@ def open_browser_when_ready(url: str) -> None:
             time.sleep(0.5)
     else:
         return
-    say(f"已啟動：{url}/docs   （按 Ctrl+C 停止）")
-    webbrowser.open(f"{url}/docs")
+    say(f"已啟動：{url}/   評估觀察：{url}/observer   決策紀錄：{url}/decisions   （按 Ctrl+C 停止）")
+    webbrowser.open(f"{url}/")
 
 
 def main() -> None:
@@ -125,6 +125,8 @@ def main() -> None:
     if args.minimal:
         env["EMBEDDING_PROVIDER"] = "hashing"
     env = load_scenarios(env, args.reset)
+    if not shutil.which(os.environ.get("CLAUDE_CLI_PATH", "claude")):
+        say("找不到 Claude Code CLI：整合搜尋可以用，但「AI 回答」需要先安裝 Claude Code 並執行一次 claude 登入。")
 
     port = free_port(args.port)
     if port != args.port:
@@ -133,7 +135,7 @@ def main() -> None:
     if not args.no_browser:
         threading.Thread(target=open_browser_when_ready, args=(url,), daemon=True).start()
     else:
-        say(f"啟動中：{url}/docs   （按 Ctrl+C 停止）")
+        say(f"啟動中：{url}/   （按 Ctrl+C 停止）")
 
     cmd = [PY, "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", str(port)]
     if args.reload:

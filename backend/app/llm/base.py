@@ -1,10 +1,10 @@
 """Provider-neutral LLM interface.
 
-Every part of the app talks to models through `LLMProvider`, so the backing
-model (Claude subscription via CLI, Anthropic API, local model, ...) can be
-switched with the `LLM_PROVIDER` setting without touching callers.
+Every part of the app talks to the model through `LLMProvider`. The project uses the
+Claude Code CLI (`claude_cli`); `fake` replaces it in tests and offline development.
 """
 
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel
@@ -27,6 +27,13 @@ class LLMError(RuntimeError):
 class LLMProvider(Protocol):
     name: str
 
-    async def generate(self, system: str, user: str, *, max_tokens: int = 4000) -> LLMResult:
-        """Return the model's text reply to a single-turn prompt."""
+    async def generate(
+        self, system: str, user: str, *, max_tokens: int = 4000, workspace: Path | None = None,
+        json_schema: dict | None = None,
+    ) -> LLMResult:
+        """Return the model's text reply to a single-turn prompt.
+
+        With `workspace`, the model may search and read the files in that folder (read-only) before answering.
+        With `json_schema`, the reply text is a JSON object that matches the schema.
+        """
         ...

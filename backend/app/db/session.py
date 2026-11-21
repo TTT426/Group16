@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..config import get_settings
@@ -44,10 +44,34 @@ def get_session() -> Iterator[Session]:
 
 
 def init_db(engine: Engine | None = None) -> None:
-    """Create tables if they do not exist. (Alembic migrations replace this once the schema settles.)"""
+    """Create missing tables, then add columns that newer versions of the schema introduced."""
     from .models import Base
 
-    Base.metadata.create_all(engine or get_session_factory().kw["bind"])
+    engine = engine or get_session_factory().kw["bind"]
+    Base.metadata.create_all(engine)
+    add_missing_columns(engine, Base.metadata)
+
+
+def add_missing_columns(engine: Engine, metadata) -> list[str]:
+    """Lightweight migration: `create_all` never alters existing tables, so older databases miss new columns.
+
+    Columns are added without constraints or defaults, so existing rows get NULL: any column introduced after
+    the first release must therefore be nullable. Returns "table.column" for each column added.
+    """
+    added = []
+    existing_tables = set(inspect(engine).get_table_names())
+    with engine.begin() as conn:
+        for table in metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue
+            present = {c["name"] for c in inspect(conn).get_columns(table.name)}
+            for column in table.columns:
+                if column.name in present:
+                    continue
+                ddl_type = column.type.compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {ddl_type}'))
+                added.append(f"{table.name}.{column.name}")
+    return added
 
 
 def delete_db_file(db_file: Path) -> None:

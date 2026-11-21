@@ -24,6 +24,15 @@ answer_key:
     - 先查狀態可以避免重複扣款
   sources: [discord.thread.payment-fail, github.pull.fix-idem-key, notion.page.payment-spec]
 
+# 用於比較 rag / full / agent 三種問答模式（scripts/eval_modes.py）。parts = 這題考答案 key 的哪幾部分。
+eval_questions:
+  - question: 找出「信用卡付款失敗」bug 的原因，並說明目前的處理方式為什麼這樣選。
+    parts: [cause, current_approach, why]
+  - question: 結帳時出現 PAYMENT_DUPLICATE 是怎麼回事？
+    parts: [cause]
+  - question: 為什麼不直接把前端的自動重試拿掉就好？
+    parts: [why]
+
 github:
   issues:
     - key: payment-bug
