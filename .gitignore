@@ -7,3 +7,5 @@ __pycache__/
 build/
 dist/
 eval_exports/
+data/
+.ruff_cache/

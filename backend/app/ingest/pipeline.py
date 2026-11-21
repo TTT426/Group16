@@ -4,7 +4,7 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..connectors.base import NormalizedDocument
@@ -43,10 +43,27 @@ def ingest_documents(
         texts = chunk_document(doc, max_chars=max_chars)
         vectors = embedder.embed(texts)
         pairs = zip(texts, vectors, strict=True)
-        row.chunks = [Chunk(ordinal=i, text=t, embedding=v) for i, (t, v) in enumerate(pairs)]
+        row.chunks = [
+            Chunk(ordinal=i, text=t, embedding=v, embedding_model=embedder.model_id)
+            for i, (t, v) in enumerate(pairs)
+        ]
 
         stats.documents += 1
         stats.chunks += len(texts)
         stats.by_source[doc.source] += 1
     session.commit()
     return stats
+
+
+def reembed_stale(session: Session, embedder: Embedder, *, batch_size: int = 64) -> int:
+    """Re-embed chunks made with a different (or no) model, e.g. after installing fastembed. Returns the count."""
+    stale = session.scalars(
+        select(Chunk).where(or_(Chunk.embedding_model.is_(None), Chunk.embedding_model != embedder.model_id))
+    ).all()
+    for start in range(0, len(stale), batch_size):
+        batch = stale[start : start + batch_size]
+        for chunk, vector in zip(batch, embedder.embed([c.text for c in batch]), strict=True):
+            chunk.embedding = vector
+            chunk.embedding_model = embedder.model_id
+    session.commit()
+    return len(stale)

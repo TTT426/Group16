@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from ..embeddings.base import Embedder
 from ..embeddings.factory import get_embedder
-from ..retrieval.hybrid import KeywordIndex
+from ..retrieval.hybrid import ChunkIndex
 
 
 def embedder_dep() -> Embedder:
@@ -12,5 +12,5 @@ def embedder_dep() -> Embedder:
 
 
 @lru_cache
-def keyword_index_dep() -> KeywordIndex:
-    return KeywordIndex()
+def chunk_index_dep() -> ChunkIndex:
+    return ChunkIndex()
