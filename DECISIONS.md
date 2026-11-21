@@ -35,18 +35,7 @@ LLM 介面抽象化、可以切換 -> 可執行並實作
 降低外部依賴：SQLite、fastembed、一鍵啟動 -> 可執行並實作:
 Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 
-## 2026-11-21 — 完整版：只用 Claude CLI、AI 問答預設 rag、純 HTML 介面（提案，待組內確認）
-**What:**
-- LLM 只用 Claude Code CLI（訂閱額度），移除 `anthropic_api`；`fake` 只給測試用。
-- AI 問答提供 rag / full / agent 三種模式，預設 `rag`。
-- 網頁介面用純 HTML + JavaScript（不用 Jinja2 / HTMX）。
-- 決策紀錄要所有參與者確認後才存檔，並重新索引。
-- 資料庫新欄位在啟動時自動補上（不用 Alembic）。
-
-**Why:**
-- 使用者決定只用目前的 Claude CLI。
-- 三種模式在評估情境上的準確度幾乎相同（98% / 98% / 100%），rag 最快、也能處理大型專案，見 `docs/EVAL_MODES.md`。
-- 介面不增加任何依賴。
-- 決策紀錄的流程對應 CP1 的 Human-AI boundary。
-
-**Status:** 提案。細節見 `docs/PROJECT_PLAN.md` §11。
+## 2026-11-21 — 完整版 MVP：PR #11（提案，待組內確認）
+**What:** 提案 [#11](https://github.com/TTT426/Group16/pull/11)：LLM 只用 Claude Code CLI（移除 `anthropic_api`）；AI 問答預設 `rag`（rag / full / agent 三種模式在評估情境上準確度幾乎相同，98% / 98% / 100%，rag 最快，見 `docs/EVAL_MODES.md`）；網頁介面用純 HTML + JavaScript（不用 Jinja2 / HTMX）；決策紀錄要所有參與者確認後才存檔；資料庫新欄位在啟動時自動補上。
+**What the mainly change/improve** : 完整版 MVP：AI 問答、評估工具、決策紀錄、seed 腳本
+**Led by:** @boanhsu1213
