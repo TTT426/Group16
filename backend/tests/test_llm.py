@@ -179,3 +179,22 @@ def test_extract_json_object(text):
 def test_extract_json_object_fails():
     with pytest.raises(ValueError):
         extract_json_object("no json here [1, 2]")
+
+
+# ---------- auto selection ----------
+
+def test_auto_prefers_claude_cli_then_api_then_fake(monkeypatch):
+    import app.llm.factory as factory
+
+    settings = Settings(_env_file=None, llm_provider="auto")
+    monkeypatch.setattr(factory.shutil, "which", lambda exe: "/usr/bin/claude")
+    assert factory.resolve_provider_name(settings) == "claude_cli"
+
+    monkeypatch.setattr(factory.shutil, "which", lambda exe: None)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    assert factory.resolve_provider_name(settings) == "anthropic_api"
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    assert factory.resolve_provider_name(settings) == "fake"
+    assert isinstance(get_provider(settings), FakeProvider)
+    assert factory.resolve_provider_name(Settings(_env_file=None, llm_provider="claude_cli")) == "claude_cli"

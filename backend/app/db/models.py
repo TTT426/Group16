@@ -1,14 +1,36 @@
-"""Database schema (see docs/PROJECT_PLAN.md §5)."""
+"""Database schema (see docs/PROJECT_PLAN.md §5).
 
+Stored in a single SQLite file. Embeddings are float32 blobs; similarity is computed in memory (retrieval/hybrid.py).
+"""
+
+from array import array
 from datetime import datetime
 
-from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
 
-from ..config import get_settings
 
-EMBEDDING_DIM = get_settings().embedding_dim
+class Float32Vector(TypeDecorator):
+    """A list of floats stored as float32 bytes (native byte order; no pgvector needed)."""
+
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        packed = array("f", value)
+        if packed.itemsize != 4:  # pragma: no cover - every mainstream platform uses 4-byte floats
+            raise RuntimeError("float32 storage requires 4-byte C floats")
+        return packed.tobytes()
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        unpacked = array("f")
+        unpacked.frombytes(value)
+        return unpacked.tolist()
 
 
 class Base(DeclarativeBase):
@@ -41,7 +63,9 @@ class Chunk(Base):
     document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
     ordinal: Mapped[int] = mapped_column(Integer, default=0)
     text: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
+    embedding: Mapped[list[float] | None] = mapped_column(Float32Vector)
+    # Which embedder produced `embedding`; search only compares vectors from the same model.
+    embedding_model: Mapped[str | None] = mapped_column(String(160), index=True)
 
     document: Mapped[Document] = relationship(back_populates="chunks")
 

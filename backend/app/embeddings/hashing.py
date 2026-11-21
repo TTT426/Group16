@@ -1,6 +1,6 @@
-"""Deterministic hashing embedder: no model download, lexical similarity only.
+"""Deterministic hashing embedder: no model download and no extra packages, lexical similarity only.
 
-For tests and offline development. Use `bge` for real semantic search.
+Fallback when no embedding model is installed, and used in tests.
 """
 
 import hashlib
@@ -12,8 +12,9 @@ from ..retrieval.tokenize import tokenize
 class HashingEmbedder:
     name = "hashing"
 
-    def __init__(self, dim: int = 1024) -> None:
+    def __init__(self, dim: int = 512) -> None:
         self.dim = dim
+        self.model_id = f"hashing:{dim}"
 
     def _vector(self, text: str) -> list[float]:
         vec = [0.0] * self.dim
@@ -23,7 +24,7 @@ class HashingEmbedder:
             vec[index] += 1.0 if digest[4] & 1 else -1.0
         norm = math.sqrt(sum(v * v for v in vec))
         if norm == 0:
-            vec[0] = 1.0  # pgvector cannot compute cosine distance of a zero vector
+            vec[0] = 1.0  # avoid a zero vector (undefined cosine similarity)
             return vec
         return [v / norm for v in vec]
 

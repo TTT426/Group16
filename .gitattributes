@@ -1,0 +1,5 @@
+# Store text files with LF in the repo and check them out with LF on every OS,
+# so edits on Windows never turn whole files into a diff. Batch files must stay CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -79,3 +79,26 @@ def test_find_references_across_tools():
 def test_github_repo_of():
     assert github_repo_of("https://github.com/Acme/Shop/issues/1") == "acme/shop"
     assert github_repo_of("https://discord.com/x") is None
+
+
+def test_embedder_auto_falls_back_to_hashing_without_fastembed(monkeypatch):
+    import app.embeddings.factory as factory
+    from app.config import Settings
+
+    monkeypatch.setattr(factory, "_installed", lambda module: False)
+    embedder = factory.build_embedder(Settings(_env_file=None, embedding_provider="auto"))
+    assert embedder.name == "hashing"
+
+    monkeypatch.setattr(factory, "_installed", lambda module: True)
+    embedder = factory.build_embedder(Settings(_env_file=None, embedding_provider="auto"))
+    assert embedder.model_id == "fastembed:BAAI/bge-small-zh-v1.5"  # constructed lazily, nothing downloaded yet
+
+
+def test_float32_vector_roundtrip():
+    from app.db.models import Float32Vector
+
+    column = Float32Vector()
+    stored = column.process_bind_param([0.5, -1.25, 3.0], None)
+    assert isinstance(stored, bytes) and len(stored) == 12
+    assert column.process_result_value(stored, None) == [0.5, -1.25, 3.0]
+    assert column.process_bind_param(None, None) is None
