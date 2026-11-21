@@ -26,5 +26,11 @@
 
 ## 2026-11-21 — Code steward 審閱：PR #10
 **What:** Nathan 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10)結果：核准。
-**Status** : 降低外部依賴：SQLite、fastembed、一鍵啟動
+**What the mainly change/improve** : 降低外部依賴：SQLite、fastembed、一鍵啟動
 **Led by:** @boanhsu1213
+
+## 2026-11-21 小組討論結果
+MVP 技術選型 -> 可執行並實作
+LLM 介面抽象化、可以切換 -> 可執行並實作
+降低外部依賴：SQLite、fastembed、一鍵啟動 -> 可執行並實作:
+Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
