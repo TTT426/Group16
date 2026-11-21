@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -16,16 +17,19 @@ class Settings(BaseSettings):
     # SQLite database file (built into Python, no database server). Relative paths are relative to the repo root.
     database_path: Path = DEFAULT_DB_PATH
 
-    # LLM: auto | claude_cli | anthropic_api | fake
-    llm_provider: str = "auto"
-    llm_model: str = ""  # empty -> provider default
-    llm_effort: str = "medium"  # anthropic_api only; empty -> not sent
+    # LLM: claude_cli (Claude Code CLI, subscription) | fake (tests / offline development only)
+    llm_provider: str = "claude_cli"
+    llm_model: str = ""  # empty -> the CLI's current default model
     llm_timeout_s: float = 180.0
     llm_max_concurrency: int = 2
-
-    # claude_cli provider
     claude_cli_path: str = "claude"
     claude_cli_strip_api_key: bool = True
+
+    # AI question answering: rag | full | agent (see qa/service.py and docs/EVAL_MODES.md)
+    qa_mode: str = "rag"
+    qa_top_k: int = 8  # passages given to the model in rag mode
+    qa_full_context_chars: int = 200_000  # above this, full mode falls back to rag
+    workspace_dir: Path = REPO_ROOT / "data" / "workspace"  # markdown export searched in agent mode
 
     # Embeddings: auto | fastembed | hashing
     embedding_provider: str = "auto"
@@ -36,8 +40,15 @@ class Settings(BaseSettings):
     github_repo: str = ""  # owner/repo
     github_include_markdown: bool = True
     notion_token: str = ""  # the integration only sees pages explicitly shared with it
+    notion_parent_page_id: str = ""  # seeding only: page under which the scenario pages are created
     discord_bot_token: str = ""  # bot needs the Message Content intent
     discord_guild_id: str = ""
+
+    @field_validator("llm_provider")
+    @classmethod
+    def _legacy_llm_provider(cls, value: str) -> str:
+        # .env files created by earlier versions say LLM_PROVIDER=auto; the project now uses only the Claude CLI.
+        return "claude_cli" if value.strip().lower() == "auto" else value
 
     @property
     def db_file(self) -> Path:

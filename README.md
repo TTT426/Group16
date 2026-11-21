@@ -1,27 +1,27 @@
 # Group16 — Context Engine
 
-跨工具 AI 整合層：新人可以一次問遍 GitHub / Notion / Discord 裡的專案資訊，AI 回答時**每一句都附原始來源連結**；確認過的結論會存成 Decision log。
+跨工具 AI 整合層：剛接手專案的工程師可以一次問遍 GitHub、Notion、Discord 裡的專案資訊。AI 回答的**每一段都附原始來源連結**，查證過的結論可以存成團隊的決策紀錄。
 
 - 規劃與里程碑：[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)
+- 問答模式比較（rag / full / agent）：[docs/EVAL_MODES.md](docs/EVAL_MODES.md)
 - 決策紀錄：[DECISIONS.md](DECISIONS.md)
 - AI 使用規範與互動紀錄：[AI_GUIDELINES.md](AI_GUIDELINES.md)、[docs/prompts/](docs/prompts/)
 
 ## 一鍵啟動
 
-唯一需要事先安裝的是 **Python 3.11 以上**（[下載](https://www.python.org/downloads/)；Windows 安裝時請勾選「Add python.exe to PATH」）。
-不需要 Docker，也不需要另外安裝資料庫。
+需要事先安裝：
+- **Python 3.11 以上**（[下載](https://www.python.org/downloads/)；Windows 安裝時請勾選「Add python.exe to PATH」）
+- **Claude Code CLI**，並執行一次 `claude` 登入（AI 回答使用你的 Claude 訂閱額度）。沒有安裝的話，整合搜尋還是能用
 
 | 系統 | 啟動方式 |
 |---|---|
 | Windows | 雙擊 `start.bat` |
 | macOS / Linux | 終端機執行 `./start.sh`（或 `sh start.sh`） |
 
-腳本會自動：建立虛擬環境 → 安裝套件 → 建立 `.env` → 建立資料庫並匯入兩個評估情境 → 啟動 API → 開啟瀏覽器到 `/docs`。
-第一次需要網路，會花幾分鐘（套件加上約 90 MB 的 embedding 模型）；之後再啟動只要幾秒。
+腳本會自動：建立虛擬環境 → 安裝套件 → 建立 `.env` → 建立資料庫並匯入兩個評估情境 → 啟動 → 開啟瀏覽器。
+第一次需要網路，大約幾分鐘（套件加上約 90 MB 的 embedding 模型）；之後再啟動只要幾秒。按 `Ctrl+C` 停止。
 
-在 `/docs` 頁面試 `GET /search`，例如輸入「付款失敗的原因是什麼」，就會看到跨三個工具的搜尋結果與原始連結。按 `Ctrl+C` 停止。
-
-常用選項（Windows 寫成 `start.bat --port 9000`，macOS / Linux 寫成 `./start.sh --port 9000`）：
+選項（Windows 寫成 `start.bat --port 9000`，macOS / Linux 寫成 `./start.sh --port 9000`）：
 
 | 選項 | 用途 |
 |---|---|
@@ -32,11 +32,39 @@
 | `--no-browser` | 不自動開啟瀏覽器 |
 | `--reload` | 改程式碼時自動重啟（開發用） |
 
-### 相容性設計
-- **資料庫**：只用 SQLite（Python 內建），整個資料庫就是 `data/group16.db` 一個檔案；要搬資料或重來，複製或刪除這個檔案即可
-- **Embedding**：預設用 fastembed（ONNX，不需要 torch）。如果這台電腦裝不起來，或下載模型時沒有網路，會自動退回不需要任何套件的 hashing 模式，程式照樣能跑
-- **LLM**：`LLM_PROVIDER=auto`。有裝 Claude Code CLI 就用它（訂閱額度），有 `ANTHROPIC_API_KEY` 就用 API，否則用離線的 fake
-- 換電腦、換模型都不用手動處理：資料庫會記錄每個向量是哪個模型算的，模型不同時啟動腳本會自動重新計算
+## 怎麼用
+
+### 查詢（`/`）
+- **AI 回答**：輸入問題，Claude 會整理答案，每一段後面的編號連到右側的來源卡片，點開就是原始的 GitHub、Notion 或 Discord 頁面。沒有來源支持的段落會被標出來；資料不足時會明講，並建議可以問誰
+- **整合搜尋**：不經過 AI，直接列出三個工具裡的相關內容（評估時的對照組）
+
+AI 回答有三種模式，用 `.env` 的 `QA_MODE` 設定，比較結果見 [docs/EVAL_MODES.md](docs/EVAL_MODES.md)：
+
+| 模式 | 做法 |
+|---|---|
+| `rag` | 混合搜尋（關鍵字 + 語意）找出相關段落，再交給 Claude 整理 |
+| `full` | 整個專案的內容都放進 Claude 的 context（專案太大時自動改用 rag） |
+| `agent` | 專案匯出成 markdown 資料夾，Claude 用唯讀的 Grep / Glob / Read 自己搜尋 |
+
+### 評估（`/observer`）
+對應 CP1 的結構化觀察：
+1. 每位受試者的每一輪各建立一個場次（對照輪，或工具輪的 AI 回答 / 整合搜尋）
+2. 按「開始計時」，把頁面上的連結給受試者，他們的查詢和點開的來源會自動記錄
+3. 受試者問資深成員時按「+1」；完成後按「結束」，依答案 key 給分
+4. 在「標註 AI 引用」逐一確認來源是否真的支持回答（門檻：至少 80%）
+5. 「下載 CSV」取得每個場次的時間、詢問次數、得分、是否點開來源、引用支持率
+
+### 決策紀錄（`/decisions`）
+在 AI 回答下方按「建立決策草稿」，Claude 會起草；所有參與者在決策紀錄頁按下確認後才會存檔，之後的查詢也搜得到它。草稿修改後，之前的確認會失效。可以匯出成 `DECISIONS.md` 的格式。
+
+## 建立評估用的真實工作區
+評估的對照輪需要受試者在真的 GitHub、Notion、Discord 上找資料。先在 `.env` 填好 token（設定方式見 `.env.example` 的註解），然後：
+
+```bash
+python scripts/seed_workspace/seed.py --dry-run               # 先看會建立什麼
+python scripts/seed_workspace/seed.py github notion discord   # 建立（可中斷後重跑，不會重複）
+python scripts/ingest.py --reset github notion discord        # 改用真實工具的資料
+```
 
 ## 開發
 
@@ -61,43 +89,31 @@ GROUP16_TEST_EMBEDDER=fastembed .venv/bin/python -m pytest -q -rs
 手動安裝方式：
 
 ```bash
-# 啟動腳本會建立 .venv；之後可以直接用它
 .venv\Scripts\activate              # macOS/Linux: source .venv/bin/activate
 pip install -e ".[dev,embeddings]"
 
-pytest                              # 測試（用暫存的 SQLite 檔，不需要任何服務）
+pytest                              # 測試（暫存 SQLite 檔，LLM 用 fake，不需要任何服務）
 ruff check .                        # lint（合併前必須通過）
 ```
 
-選用的測試：
 - `GROUP16_TEST_EMBEDDER=fastembed pytest -k real_embedder`：用真實的 embedding 模型測檢索
-
-### 匯入資料
-```bash
-# 離線：把模擬工作區情境匯入（啟動腳本第一次會自動做）
-python scripts/ingest.py --init-db --scenario "scripts/seed_workspace/scenario_*.yaml"
-
-# 真實工具（先在 .env 填好 token，設定方式見 .env.example 的註解）
-python scripts/ingest.py github notion discord
-```
+- `python scripts/eval_modes.py`：用真的 Claude 比較三種問答模式，結果寫到 `docs/EVAL_MODES.md`（會用到訂閱額度）
+- `python -m app.llm "你好"`：測試 Claude CLI 是否可用
 
 ### API
-- `GET /search?q=...`：跨工具整合搜尋，不經過 AI（評估時的對照組）
-- `POST /ingest {"sources": ["github", "notion", "discord"]}`：從真實工具匯入
-- `GET /health`：目前使用的 LLM provider 與 embedding 模型
+| 路徑 | 用途 |
+|---|---|
+| `POST /ask` | AI 回答（附來源） |
+| `GET /search?q=` | 整合搜尋（不經過 AI） |
+| `GET /go?url=` | 開啟來源並記錄點擊（只允許已索引的網址） |
+| `/api/eval/...` | 評估場次、引用標註、`export.csv` |
+| `/api/decisions/...` | 決策草稿、修改、確認、`export.md` |
+| `POST /ingest` | 從真實工具匯入 |
+| `GET /api/config`、`GET /health` | 目前設定 |
 
-### LLM provider（用 `LLM_PROVIDER` 切換）
+完整說明在 `/docs`。
 
-| 值 | 計費方式 | 需要什麼 |
-|---|---|---|
-| `auto`（預設） | 依序嘗試下面三種 | — |
-| `claude_cli` | Claude Pro/Max 訂閱額度 | 安裝 Claude Code 並執行 `claude` 登入一次 |
-| `anthropic_api` | API 按量計費 | `ANTHROPIC_API_KEY`，並 `pip install -e ".[anthropic]"` |
-| `fake` | 免費 | 不需要，離線開發 / 測試用 |
-
-測試目前的 provider：`python -m app.llm "用一句話說明什麼是 Decision log"`
-
-> `claude_cli` 預設會在子程序中移除 `ANTHROPIC_API_KEY`，確保走訂閱額度。訂閱有用量上限，也以個人使用為主；正式評估如果量比較大，請改用 `anthropic_api`。
-
-## 模擬工作區
-評估用的兩個情境放在 [scripts/seed_workspace/](scripts/seed_workspace/)：付款失敗、確認信重複寄送。正確答案刻意分散在三個工具。
+### 相容性設計
+- 資料庫只用 SQLite（`data/group16.db` 一個檔案）；新版本增加的欄位會在啟動時自動補上
+- Embedding 預設用 fastembed（不需要 torch）；裝不起來或沒有網路時，自動退回不需要任何套件的 hashing
+- 網頁介面是純 HTML + JavaScript，不需要 Node.js 或任何前端套件

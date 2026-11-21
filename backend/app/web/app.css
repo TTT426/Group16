@@ -1,0 +1,166 @@
+/* Group16 Context Engine — shared styles. No external fonts or libraries (works offline). */
+:root {
+  --paper: #f3f6f5;
+  --surface: #ffffff;
+  --ink: #1d2a2e;
+  --ink-soft: #4f5f63;
+  --rule: #c8d3d1;
+  --rule-soft: #e2e9e7;
+  --action: #0f6e6a;
+  --action-ink: #ffffff;
+  --warn: #9a6200;
+  --warn-bg: #fdf3df;
+  --danger: #a12d2d;
+  --tool-github: #3d4a5c;
+  --tool-notion: #8a6d3b;
+  --tool-discord: #5b5fc7;
+  --tool-decision: #0f6e6a;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --font: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--action); }
+:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; border-radius: 3px; }
+
+/* ---- top bar ---- */
+.topbar {
+  display: flex; align-items: baseline; gap: 1.5rem; flex-wrap: wrap;
+  padding: 0.9rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+}
+.brand { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; }
+.nav { display: flex; gap: 1.1rem; font-size: 0.95rem; }
+.nav a { color: var(--ink-soft); text-decoration: none; padding: 0.15rem 0; border-bottom: 2px solid transparent; }
+.nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--action); }
+.status { margin-left: auto; font-size: 0.85rem; color: var(--ink-soft); }
+
+main { padding: clamp(1rem, 4vw, 2.5rem); max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 1.6rem; line-height: 1.3; margin: 0 0 0.4rem; font-weight: 700; }
+h2 { font-size: 1.15rem; margin: 0 0 0.75rem; font-weight: 700; }
+.lede { color: var(--ink-soft); margin: 0 0 1.5rem; max-width: 46em; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 0.85rem; }
+
+/* ---- controls ---- */
+button, .button {
+  font: inherit; font-size: 0.95rem; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+  border-radius: var(--radius-control); padding: 0.45rem 0.9rem; text-decoration: none; display: inline-block;
+}
+button:hover, .button:hover { border-color: var(--ink-soft); }
+button.primary { background: var(--action); border-color: var(--action); color: var(--action-ink); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); }
+button:disabled { opacity: 0.55; cursor: progress; }
+input, textarea, select {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: var(--radius-control); padding: 0.5rem 0.65rem; width: 100%;
+}
+textarea { resize: vertical; min-height: 4.5rem; line-height: 1.6; }
+label { display: block; font-size: 0.9rem; color: var(--ink-soft); margin-bottom: 0.25rem; }
+
+.segmented { display: inline-flex; border: 1px solid var(--rule); border-radius: var(--radius-control); overflow: hidden; }
+.segmented button { border: 0; border-radius: 0; background: transparent; padding: 0.4rem 0.95rem; }
+.segmented button + button { border-left: 1px solid var(--rule); }
+.segmented button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.segmented button:disabled { cursor: not-allowed; }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-panel); padding: 1.1rem 1.25rem; }
+.notice { border-left: 4px solid var(--warn); background: var(--warn-bg); padding: 0.6rem 0.9rem; border-radius: 0 var(--radius-control) var(--radius-control) 0; }
+.error { border-left-color: var(--danger); background: #fbeaea; }
+.banner { background: var(--ink); color: var(--paper); padding: 0.5rem clamp(1rem, 4vw, 2.5rem); font-size: 0.9rem; }
+
+/* ---- tool colour: one variable per source tool ---- */
+[data-tool="github"] { --tool: var(--tool-github); }
+[data-tool="notion"] { --tool: var(--tool-notion); }
+[data-tool="discord"] { --tool: var(--tool-discord); }
+[data-tool="decision"] { --tool: var(--tool-decision); }
+.tool-name { color: var(--tool); font-weight: 600; font-size: 0.85rem; }
+
+/* ---- ask page ---- */
+.ask-form { display: grid; gap: 0.75rem; margin-bottom: 1.75rem; }
+.ask-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.ask-row .grow { flex: 1; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 2rem; align-items: start; }
+@media (max-width: 860px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
+
+.answer h2 { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+.answer .meta { font-size: 0.85rem; color: var(--ink-soft); font-weight: 400; }
+.answer p { margin: 0 0 1rem; max-width: 42em; }
+.answer p.unsupported { border-left: 3px solid var(--warn); padding-left: 0.75rem; }
+.answer p.unsupported::after { content: "（這一段沒有來源支持）"; color: var(--warn); font-size: 0.85rem; }
+
+/* The citation marks: the one memorable element. Each mark carries its tool colour. */
+.cite {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.45rem; height: 1.45rem; padding: 0 0.3rem; margin-left: 0.2rem;
+  border-radius: 0.75rem; font-size: 0.75rem; font-weight: 700; line-height: 1;
+  color: #fff; background: var(--tool); text-decoration: none; vertical-align: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+.cite:hover, .cite.lit { outline: 2px solid var(--tool); outline-offset: 2px; }
+
+.sources { display: grid; gap: 0.75rem; }
+.source {
+  background: var(--surface); border: 1px solid var(--rule-soft); border-left: 4px solid var(--tool);
+  border-radius: 0 var(--radius-panel) var(--radius-panel) 0; padding: 0.7rem 0.9rem;
+}
+.source.lit { border-color: var(--tool); }
+.source header { display: flex; gap: 0.5rem; align-items: baseline; }
+.source .num { font-weight: 700; color: var(--tool); font-variant-numeric: tabular-nums; }
+.source a.title { font-weight: 600; color: var(--ink); text-decoration: none; display: block; margin: 0.15rem 0; }
+.source a.title:hover { text-decoration: underline; }
+.source p { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+.source .by { font-size: 0.8rem; color: var(--ink-soft); }
+
+.thinking { display: flex; gap: 0.75rem; align-items: center; color: var(--ink-soft); }
+.thinking .pulse { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--action); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .thinking .pulse { animation: none; } }
+
+.empty { border: 1px dashed var(--rule); border-radius: var(--radius-panel); padding: 1.5rem; color: var(--ink-soft); }
+.empty ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+.empty button { margin: 0.25rem 0.25rem 0 0; font-size: 0.9rem; }
+
+/* ---- tables (observer) ---- */
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+th { color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+tr.active { background: #e6f1ef; }
+.num-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+
+.timer { font-size: clamp(2.6rem, 8vw, 4.2rem); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: 0.02em; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.25rem; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 0.75rem; }
+/* minmax(0, 1fr): a wide table scrolls inside its wrapper instead of stretching the whole page */
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+.label-toggle { display: inline-flex; gap: 0.25rem; }
+.label-toggle button { padding: 0.15rem 0.55rem; font-size: 0.85rem; }
+.label-toggle button[aria-pressed="true"].yes { background: var(--action); color: #fff; border-color: var(--action); }
+.label-toggle button[aria-pressed="true"].no { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* ---- decisions ---- */
+.decision { border-left: 4px solid var(--rule); }
+.decision.confirmed { border-left-color: var(--tool-decision); }
+.decision.pending { border-left-color: var(--warn); }
+.decision:target { outline: 3px solid var(--action); }
+.decision dl { display: grid; grid-template-columns: 4.5rem 1fr; gap: 0.35rem 0.75rem; margin: 0.75rem 0; }
+.decision dt { color: var(--ink-soft); }
+.decision dd { margin: 0; white-space: pre-wrap; }
+.chip { display: inline-block; border: 1px solid var(--rule); border-radius: 999px; padding: 0.05rem 0.6rem; font-size: 0.82rem; }
+.chip.done { border-color: var(--tool-decision); color: var(--tool-decision); }
