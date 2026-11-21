@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # OAuth App client id for "Sign in with GitHub" (device flow). Public value, no secret needed.
     github_client_id: str = ""
     github_include_markdown: bool = True
+    # Seeding only: a throwaway repo the evaluation scenarios are WRITTEN into. Never the team's real repo
+    # (GITHUB_REPO, which is only read); scripts/seed_workspace/seed.py refuses to run if the two are the same.
+    seed_github_repo: str = ""
     notion_token: str = ""  # the integration only sees pages explicitly shared with it
     notion_parent_page_id: str = ""  # seeding only: page under which the scenario pages are created
     discord_bot_token: str = ""  # bot needs the Message Content intent

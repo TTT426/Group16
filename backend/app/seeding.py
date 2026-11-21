@@ -18,9 +18,11 @@ from pathlib import Path
 
 import httpx
 
+from .config import Settings
 from .connectors.base import ConnectorError
 from .connectors.http import request
 from .connectors.notion import NOTION_VERSION
+from .github_account import current_token
 
 PLACEHOLDER = re.compile(r"\{\{\s*([a-z]+\.[a-z]+\.[\w-]+)\s*\}\}")
 
@@ -63,13 +65,28 @@ class _Seeder:
         return response.json() if response.content else {}
 
 
+def github_seed_target(settings: Settings) -> tuple[str, str]:
+    """(repo, token) to seed into. The seed repo must be set and must not be the repo the app reads from."""
+    repo = settings.seed_github_repo.strip()
+    if "/" not in repo:
+        raise ConnectorError("github: set SEED_GITHUB_REPO in .env to an empty test repo (owner/repo). "
+                             "Seeding creates issues, merges pull requests and commits files there.")
+    if repo.lower() == settings.github_repo.strip().lower():
+        raise ConnectorError(f"github: SEED_GITHUB_REPO is the same as GITHUB_REPO ({repo}), the team's real repo. "
+                             "Seeding would write fake content into it; use a separate empty test repo.")
+    token, _ = current_token(settings)  # the login chosen on the connect page (token or gh CLI)
+    if not token:
+        raise ConnectorError("github: no GitHub login. Sign in on the /connect page or set GITHUB_TOKEN.")
+    return repo, token
+
+
 class GitHubSeeder(_Seeder):
     source = "github"
 
     def __init__(self, repo: str, token: str, *, merge: bool = True, client: httpx.Client | None = None,
                  sleep: Callable[[float], None] = time.sleep) -> None:
         if "/" not in repo or not token:
-            raise ConnectorError("github: GITHUB_REPO (owner/repo) and GITHUB_TOKEN are required for seeding.")
+            raise ConnectorError("github: SEED_GITHUB_REPO (owner/repo) and a GitHub login are required for seeding.")
         client = client or httpx.Client(base_url="https://api.github.com", timeout=30.0)
         client.headers.update({"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
                                "X-GitHub-Api-Version": "2022-11-28"})
