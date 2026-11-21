@@ -19,6 +19,14 @@ answer_key:
     - 有討論過換成 Kafka transactions 達成 exactly-once，但對 4 人團隊維運成本太高，所以否決（Discord 討論）
   sources: [discord.thread.dup-email, github.pull.email-dedupe, notion.page.notify-design]
 
+eval_questions:
+  - question: 找出「訂單確認信會重複寄送」的原因，並說明目前的處理方式為什麼這樣選。
+    parts: [cause, current_approach, why]
+  - question: 客人為什麼會收到兩封一樣的確認信？
+    parts: [cause]
+  - question: 為什麼不改用 Kafka 做到 exactly-once？
+    parts: [why]
+
 github:
   issues:
     - key: dup-email-bug

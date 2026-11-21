@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>決策紀錄</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.0">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions" aria-current="page">決策紀錄</a>
+      <a href="/observer">評估</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="stack">
+    <div>
+      <h1>決策紀錄</h1>
+      <p class="lede">AI 只負責起草。每位參與者都按下「確認」後，紀錄才會存檔，之後的查詢也會搜得到它。草稿修改後，之前的確認會失效，需要重新確認。</p>
+      <div class="row">
+        <a class="button" href="/api/decisions/export.md" target="_blank" rel="noopener">匯出 Markdown（DECISIONS.md 格式）</a>
+      </div>
+    </div>
+    <div id="list" class="stack" aria-live="polite"></div>
+  </main>
+
+  <script type="module">
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
+
+    const list = document.getElementById("list");
+
+    function field(label, key, d, rows = 2) {
+      const id = `${key}-${d.id}`;
+      const control = key === "title" ? h("input", { id, value: d[key] }) : h("textarea", { id, rows }, d[key]);
+      return h("div", {}, h("label", { for: id }, label), control);
+    }
+
+    function renderPending(d) {
+      const msg = h("p", { class: "small muted" });
+      const participantsId = `p-${d.id}`;
+      return h("article", { class: "panel decision pending", id: `d${d.id}` },
+        h("h2", {}, `#${d.id} 待確認`),
+        h("div", { class: "stack" },
+          field("標題", "title", d), field("背景", "context", d), field("決定", "decision", d, 3), field("理由", "rationale", d, 3),
+          h("div", {}, h("label", { for: participantsId }, "參與確認的人（用逗號分隔）"),
+            h("input", { id: participantsId, value: d.required_participants.join(", ") }))),
+        h("p", { class: "row" },
+          h("button", { type: "button", onclick: async () => {
+            const body = {};
+            for (const key of ["title", "context", "decision", "rationale"]) body[key] = document.getElementById(`${key}-${d.id}`).value;
+            body.required_participants = document.getElementById(participantsId).value.split(/[,，、]/).map((x) => x.trim()).filter(Boolean);
+            try { await api(`/api/decisions/${d.id}`, { method: "PATCH", body }); load(); } catch (err) { msg.textContent = err.message; }
+          } }, "儲存修改")),
+        sourcesList(d),
+        h("p", {}, "確認：", ...d.required_participants.map((name) => d.confirmed_by.includes(name)
+          ? h("span", { class: "chip done" }, `${name} 已確認`)
+          : h("button", { type: "button", onclick: async () => {
+              try { await api(`/api/decisions/${d.id}/confirm`, { method: "POST", body: { participant: name } }); load(); }
+              catch (err) { msg.textContent = err.message; }
+            } }, `${name}：確認`))),
+        msg);
+    }
+
+    function sourcesList(d) {
+      if (!d.source_urls.length) return null;
+      return h("p", { class: "small" }, "來源：", ...d.source_urls.map((u, i) => [i ? "、" : "",
+        h("a", { href: u, target: "_blank", rel: "noopener" }, u.replace(/^https?:\/\//, "").slice(0, 60))]));
+    }
+
+    function renderConfirmed(d) {
+      return h("article", { class: "panel decision confirmed", id: `d${d.id}` },
+        h("h2", {}, `#${d.id} ${d.title}`),
+        h("dl", {},
+          h("dt", {}, "背景"), h("dd", {}, d.context || "—"),
+          h("dt", {}, "決定"), h("dd", {}, d.decision),
+          h("dt", {}, "理由"), h("dd", {}, d.rationale || "—"),
+          h("dt", {}, "確認者"), h("dd", {}, d.confirmed_by.join("、")),
+          h("dt", {}, "確認於"), h("dd", {}, d.confirmed_at ? new Date(d.confirmed_at).toLocaleString("zh-TW") : "—")),
+        sourcesList(d));
+    }
+
+    async function load() {
+      const decisions = await api("/api/decisions");
+      if (!decisions.length) {
+        list.replaceChildren(h("div", { class: "empty" }, "還沒有決策紀錄。在查詢頁拿到 AI 回答後，可以用「建立決策草稿」開始。"));
+        return;
+      }
+      list.replaceChildren(...decisions.map((d) => d.status === "confirmed" ? renderConfirmed(d) : renderPending(d)));
+      if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ block: "start" });
+    }
+
+    loadStatus(document.getElementById("status"));
+    load();
+  </script>
+</body>
+</html>

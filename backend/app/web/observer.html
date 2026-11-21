@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>評估觀察紀錄</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.0">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer" aria-current="page">評估</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="stack">
+    <div>
+      <h1>評估觀察紀錄</h1>
+      <p class="lede">每位受試者的每一輪各建立一個場次。對照輪只用原本的 GitHub、Notion、Discord；工具輪使用本工具。
+        開始計時後把連結給受試者；受試者問資深成員時按「+1」；完成後按「結束」並依答案 key 評分。</p>
+    </div>
+
+    <section class="panel" id="current" aria-live="polite">
+      <h2>進行中的場次</h2>
+      <p class="muted" id="current-empty">從下方表格選一個場次，按「選擇」。</p>
+      <div id="current-body" hidden>
+        <div class="grid-2">
+          <div>
+            <div class="timer" id="timer">0:00</div>
+            <p id="current-who" class="muted"></p>
+            <div class="row">
+              <button class="primary" id="btn-start" type="button">開始計時</button>
+              <button id="btn-end" type="button">結束</button>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="row">
+              <span>問資深成員的次數：<strong id="senior" class="num-cell">0</strong></span>
+              <button id="btn-senior-plus" type="button">+1</button>
+              <button id="btn-senior-minus" type="button">−1</button>
+            </div>
+            <div class="row">
+              <label for="score" style="margin:0">答案得分（0–100）</label>
+              <input id="score" type="number" min="0" max="100" step="1" style="width:6rem">
+              <button id="btn-score" type="button">儲存</button>
+            </div>
+            <div>
+              <label for="notes">觀察筆記</label>
+              <textarea id="notes" rows="2"></textarea>
+              <button id="btn-notes" type="button">儲存筆記</button>
+            </div>
+            <p class="small">給受試者的連結：<a id="participant-link" target="_blank" rel="noopener"></a></p>
+          </div>
+        </div>
+        <p id="scenario-task" class="notice small"></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>新增場次</h2>
+      <form id="create-form" class="form-grid">
+        <div><label for="pair">組別</label><input id="pair" required placeholder="P1"></div>
+        <div><label for="participant">受試者</label><input id="participant" required></div>
+        <div><label for="role">角色</label>
+          <select id="role"><option value="newcomer">剛接手的工程師</option><option value="senior">資深成員</option></select></div>
+        <div><label for="round">輪次</label>
+          <select id="round"><option value="baseline">對照輪</option><option value="tool">工具輪</option></select></div>
+        <div><label for="mode">工具輪使用</label>
+          <select id="mode"><option value="ai">AI 回答</option><option value="search">整合搜尋（沒有 AI）</option></select></div>
+        <div><label for="scenario">情境</label><select id="scenario"></select></div>
+        <div style="align-self:end"><button class="primary" type="submit">建立場次</button></div>
+      </form>
+      <p id="create-msg" class="small muted"></p>
+    </section>
+
+    <section class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">所有場次</h2>
+        <a class="button" href="/api/eval/export.csv">下載 CSV</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>場次</th><th>組別</th><th>受試者</th><th>輪次</th><th>情境</th>
+            <th>時間</th><th>問資深</th><th>AI 提問</th><th>搜尋</th><th>點開來源</th><th>得分</th><th>引用支持率</th><th></th>
+          </tr></thead>
+          <tbody id="sessions"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>標註 AI 引用</h2>
+      <p class="muted small">逐一確認：這個來源真的支持這段回答嗎？門檻是至少 80% 的引用有支持（CP1 最低證據門檻）。
+        目前：<strong id="support-rate">—</strong></p>
+      <div id="answers" class="stack"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api, h, TOOL_NAMES, formatDuration, loadStatus } from "/static/common.js?v=0.2.0";
+
+    let config = null;
+    let sessions = [];
+    let currentId = Number(localStorage.getItem("g16-current-session")) || null;
+    const $ = (id) => document.getElementById(id);
+
+    function roundLabel(s) {
+      return s.round === "baseline" ? "對照輪" : `工具輪（${s.mode === "search" ? "整合搜尋" : "AI"}）`;
+    }
+
+    async function refresh() {
+      sessions = await api("/api/eval/sessions");
+      const tbody = $("sessions");
+      tbody.replaceChildren(...sessions.map((s) => h("tr", { class: s.id === currentId ? "active" : null },
+        h("td", { class: "num-cell" }, s.id), h("td", {}, s.pair_id), h("td", {}, s.participant),
+        h("td", {}, roundLabel(s)), h("td", {}, s.scenario),
+        h("td", { class: "num-cell" }, formatDuration(s.duration_s)), h("td", { class: "num-cell" }, s.senior_questions),
+        h("td", { class: "num-cell" }, s.ai_questions), h("td", { class: "num-cell" }, s.searches),
+        h("td", { class: "num-cell" }, s.source_clicks), h("td", { class: "num-cell" }, s.score ?? "—"),
+        h("td", { class: "num-cell" }, s.citation_support_rate === null ? "—" : `${Math.round(s.citation_support_rate * 100)}%`),
+        h("td", {}, h("button", { type: "button", onclick: () => select(s.id) }, "選擇")))));
+      if (!sessions.length) tbody.append(h("tr", {}, h("td", { colspan: 13, class: "muted" }, "還沒有場次。")));
+      renderCurrent();
+      const summary = await api("/api/eval/summary");
+      $("support-rate").textContent = summary.citation_support_rate === null
+        ? "尚未標註" : `${Math.round(summary.citation_support_rate * 100)}%（${summary.citations_supported}/${summary.citations_labelled}）`;
+    }
+
+    function select(id) {
+      currentId = id;
+      localStorage.setItem("g16-current-session", id);
+      refresh();
+      loadAnswers();
+    }
+
+    function renderCurrent() {
+      const s = sessions.find((x) => x.id === currentId);
+      $("current-empty").hidden = !!s;
+      $("current-body").hidden = !s;
+      if (!s) return;
+      $("current-who").textContent = `場次 ${s.id}｜${s.pair_id}｜${s.participant}｜${roundLabel(s)}`;
+      $("senior").textContent = s.senior_questions;
+      $("score").value = s.score ?? "";
+      if (document.activeElement !== $("notes")) $("notes").value = s.notes;
+      const link = `${location.origin}/?session=${s.id}`;
+      $("participant-link").href = link;
+      $("participant-link").textContent = s.round === "tool" ? link : `${link}（對照輪不使用本工具）`;
+      const scenario = config?.scenarios.find((x) => x.id === s.scenario);
+      $("scenario-task").textContent = scenario ? `任務：${scenario.task}` : "";
+      $("btn-start").textContent = s.started_at ? "重新開始" : "開始計時";
+    }
+
+    function tickTimer() {
+      const s = sessions.find((x) => x.id === currentId);
+      if (!s || !s.started_at) { $("timer").textContent = "0:00"; return; }
+      const end = s.ended_at ? new Date(s.ended_at) : new Date();
+      $("timer").textContent = formatDuration((end - new Date(s.started_at)) / 1000);
+    }
+    setInterval(tickTimer, 500);
+
+    async function act(path, options) {
+      try { await api(path, options); await refresh(); } catch (err) { alert(err.message); }
+    }
+    $("btn-start").onclick = () => act(`/api/eval/sessions/${currentId}/start`, { method: "POST" });
+    $("btn-end").onclick = () => act(`/api/eval/sessions/${currentId}/end`, { method: "POST" });
+    $("btn-senior-plus").onclick = () => act(`/api/eval/sessions/${currentId}`, { method: "PATCH", body: { senior_delta: 1 } });
+    $("btn-senior-minus").onclick = () => act(`/api/eval/sessions/${currentId}`, { method: "PATCH", body: { senior_delta: -1 } });
+    $("btn-score").onclick = () => act(`/api/eval/sessions/${currentId}`, { method: "PATCH", body: { score: Number($("score").value) } });
+    $("btn-notes").onclick = () => act(`/api/eval/sessions/${currentId}`, { method: "PATCH", body: { notes: $("notes").value } });
+
+    $("round").onchange = () => ($("mode").disabled = $("round").value !== "tool");
+    $("mode").disabled = true;
+    $("create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = { pair_id: $("pair").value, participant: $("participant").value, role: $("role").value,
+        round: $("round").value, scenario: $("scenario").value, mode: $("round").value === "tool" ? $("mode").value : null };
+      try {
+        const s = await api("/api/eval/sessions", { method: "POST", body });
+        $("create-msg").textContent = `已建立場次 ${s.id}。`;
+        select(s.id);
+      } catch (err) { $("create-msg").textContent = err.message; }
+    });
+
+    async function loadAnswers() {
+      const query = currentId ? `?session_id=${currentId}` : "";
+      const answers = await api(`/api/eval/answers${query}`);
+      const box = $("answers");
+      if (!answers.length) { box.replaceChildren(h("p", { class: "muted" }, currentId ? "這個場次還沒有 AI 回答。" : "還沒有 AI 回答。")); return; }
+      box.replaceChildren(...answers.map((a) => {
+        const labels = new Map(a.labels.map((l) => [`${l.section_index}|${l.source_id}`, l.supported]));
+        const sources = new Map(a.sources.map((s, i) => [s.id, { ...s, n: i + 1 }]));
+        return h("div", { class: "panel" },
+          h("p", {}, h("strong", {}, `回答 ${a.id}：`), a.question, h("span", { class: "muted small" }, `（${a.mode}）`)),
+          ...a.sections.map((sec, i) => h("div", { style: "margin:0.5rem 0 0.9rem" },
+            h("p", { style: "margin:0 0 0.35rem" }, sec.text),
+            ...sec.sources.map((sid) => {
+              const s = sources.get(sid) || { title: sid, source: "", url: "#", n: "?" };
+              const key = `${i}|${sid}`;
+              const state = labels.has(key) ? labels.get(key) : null;
+              const save = (supported) => api(`/api/eval/answers/${a.id}/labels`, { method: "POST",
+                body: { labels: [{ section_index: i, source_id: sid, supported }] } }).then(() => { loadAnswers(); refresh(); });
+              return h("div", { class: "row small", "data-tool": s.source },
+                h("span", { class: "label-toggle" },
+                  h("button", { type: "button", class: "yes", "aria-pressed": String(state === true), onclick: () => save(true) }, "有支持"),
+                  h("button", { type: "button", class: "no", "aria-pressed": String(state === false), onclick: () => save(false) }, "沒有")),
+                h("span", { class: "tool-name" }, `[${s.n}] ${TOOL_NAMES[s.source] || ""}`),
+                h("a", { href: s.url, target: "_blank", rel: "noopener" }, s.title));
+            }))));
+      }));
+    }
+
+    config = await loadStatus($("status"));
+    $("scenario").replaceChildren(...(config?.scenarios || []).map((s) => h("option", { value: s.id }, s.id)));
+    await refresh();
+    loadAnswers();
+  </script>
+</body>
+</html>

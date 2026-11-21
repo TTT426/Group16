@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>專案脈絡查詢</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.0">
+</head>
+<body>
+  <div id="session-banner" class="banner" hidden></div>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/" aria-current="page">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer">評估</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main>
+    <h1>這段程式為什麼長這樣？</h1>
+    <p class="lede">一次搜尋 GitHub、Notion、Discord。AI 回答的每一段都附上原始來源，點開就能確認。</p>
+
+    <form class="ask-form" id="ask-form">
+      <label for="question">你的問題</label>
+      <textarea id="question" name="question" rows="2" required maxlength="1000"
+        placeholder="例如：付款失敗 PAYMENT_DUPLICATE 的原因是什麼？為什麼現在這樣處理？"></textarea>
+      <div class="ask-row">
+        <div class="segmented" role="group" aria-label="查詢方式">
+          <button type="button" data-kind="ai" aria-pressed="true">AI 回答</button>
+          <button type="button" data-kind="search" aria-pressed="false">整合搜尋</button>
+        </div>
+        <span class="grow"></span>
+        <button class="primary" type="submit" id="submit">查詢</button>
+      </div>
+    </form>
+
+    <div class="workspace">
+      <section class="answer" id="result" aria-live="polite">
+        <div class="empty" id="empty-state">
+          還沒有查詢。可以試試：
+          <ul id="examples"></ul>
+        </div>
+      </section>
+      <aside aria-label="來源">
+        <h2 id="sources-title" hidden>來源</h2>
+        <div class="sources" id="sources"></div>
+      </aside>
+    </div>
+  </main>
+
+  <script type="module">
+    import { api, h, TOOL_NAMES, goUrl, loadStatus } from "/static/common.js?v=0.2.0";
+
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get("session") ? Number(params.get("session")) : null;
+    const form = document.getElementById("ask-form");
+    const questionEl = document.getElementById("question");
+    const submitBtn = document.getElementById("submit");
+    const resultEl = document.getElementById("result");
+    const sourcesEl = document.getElementById("sources");
+    const sourcesTitle = document.getElementById("sources-title");
+    const kindButtons = [...document.querySelectorAll("[data-kind]")];
+    let kind = "ai";
+
+    function setKind(next) {
+      kind = next;
+      kindButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
+      submitBtn.textContent = kind === "ai" ? "問 AI" : "搜尋";
+    }
+    kindButtons.forEach((b) => b.addEventListener("click", () => setKind(b.dataset.kind)));
+    setKind("ai");
+
+    // Evaluation session: the observer's link fixes the mode for this participant.
+    if (sessionId) {
+      api(`/api/eval/sessions/${sessionId}`).then((s) => {
+        const banner = document.getElementById("session-banner");
+        banner.hidden = false;
+        if (s.round === "tool") {
+          setKind(s.mode === "search" ? "search" : "ai");
+          kindButtons.forEach((b) => (b.disabled = true));
+          banner.textContent = `評估場次 ${s.id}（${s.participant}，工具輪：${s.mode === "search" ? "整合搜尋" : "AI 回答"}）。你的查詢與點開的來源會被記錄。`;
+        } else {
+          banner.textContent = `評估場次 ${s.id} 是對照輪，這一輪請直接使用 GitHub、Notion、Discord。`;
+        }
+      }).catch(() => {});
+    }
+
+    loadStatus(document.getElementById("status")).then((config) => {
+      const examples = document.getElementById("examples");
+      for (const q of ["付款失敗 PAYMENT_DUPLICATE 的原因是什麼？為什麼現在這樣處理？", "客人為什麼會收到兩封確認信？"]) {
+        examples.append(h("li", {}, h("button", { type: "button", onclick: () => { questionEl.value = q; questionEl.focus(); } }, q)));
+      }
+      if (config && !Object.keys(config.documents).length) {
+        examples.parentElement.prepend(h("p", { class: "notice" }, "目前沒有任何資料。請先執行 start.bat（會匯入評估情境），或用 scripts/ingest.py 匯入。"));
+      }
+    });
+
+    function sourceCard(s, label, extra = {}) {
+      const link = goUrl(s.url, { session_id: sessionId, ...extra });
+      return h("article", { class: "source", id: `src-${label}`, "data-tool": s.source, "data-label": label },
+        h("header", {}, h("span", { class: "num" }, label), h("span", { class: "tool-name" }, TOOL_NAMES[s.source] || s.source)),
+        h("a", { class: "title", href: link, target: "_blank", rel: "noopener" }, s.title),
+        s.snippet ? h("p", {}, s.snippet) : null,
+        s.author ? h("span", { class: "by" }, `作者：${s.author}`) : null);
+    }
+
+    function link(label, on) {
+      document.querySelectorAll(`[data-label="${label}"]`).forEach((el) => el.classList.toggle("lit", on));
+    }
+
+    function renderAnswer(data) {
+      const numbers = new Map(data.sources.map((s, i) => [s.id, i + 1]));
+      const bySource = new Map(data.sources.map((s) => [s.id, s]));
+      const meta = `${data.mode} 模式｜${(data.latency_ms / 1000).toFixed(1)} 秒｜信心：${{ high: "高", medium: "中", low: "低" }[data.confidence] || data.confidence}`;
+      const body = [h("h2", {}, "回答", h("span", { class: "meta" }, meta))];
+      for (const section of data.sections) {
+        const p = h("p", { class: section.supported ? null : "unsupported" }, section.text);
+        for (const id of section.sources) {
+          const n = numbers.get(id);
+          const s = bySource.get(id);
+          const a = h("a", { class: "cite", href: `#src-${n}`, "data-tool": s.source, "data-label": n,
+            "aria-label": `來源 ${n}：${s.title}`, onmouseenter: () => link(n, true), onmouseleave: () => link(n, false),
+            onfocus: () => link(n, true), onblur: () => link(n, false) }, n);
+          p.append(a);
+        }
+        body.push(p);
+      }
+      if (data.unanswerable) {
+        body.push(h("p", { class: "notice" }, "現有資料不足以完整回答。", data.missing ? ` 缺少：${data.missing}` : ""));
+      }
+      if (data.suggested_contacts.length) {
+        body.push(h("p", { class: "muted" }, `需要確認的話，可以問：${data.suggested_contacts.join("、")}（他們寫了相關內容）`));
+      }
+      for (const w of data.warnings) body.push(h("p", { class: "notice small" }, w));
+      body.push(decisionForm(data));
+      resultEl.replaceChildren(...body);
+
+      sourcesTitle.hidden = !data.sources.length;
+      sourcesEl.replaceChildren(...data.sources.map((s, i) =>
+        sourceCard(s, i + 1, { answer_id: data.answer_id, source_id: s.id })));
+      sourcesEl.querySelectorAll(".source").forEach((card) => {
+        card.addEventListener("mouseenter", () => link(card.dataset.label, true));
+        card.addEventListener("mouseleave", () => link(card.dataset.label, false));
+      });
+    }
+
+    function decisionForm(data) {
+      if (data.unanswerable || !data.sections.length) return null;
+      const details = h("details", { class: "panel small" });
+      const names = h("input", { id: "participants", placeholder: "例如：小明, 資深工程師 Lisa" });
+      const me = h("input", { id: "created-by", placeholder: "你的名字" });
+      const out = h("p", { class: "muted" });
+      details.append(
+        h("summary", {}, "這個結論要存成團隊的決策紀錄嗎？"),
+        h("p", {}, "AI 會先起草，存檔前所有參與討論的人都要確認。"),
+        h("div", { class: "form-grid" },
+          h("div", {}, h("label", { for: "created-by" }, "起草人"), me),
+          h("div", {}, h("label", { for: "participants" }, "參與確認的人（用逗號分隔）"), names)),
+        h("p", {}, h("button", { type: "button", onclick: async (e) => {
+          const participants = names.value.split(/[,，、]/).map((x) => x.trim()).filter(Boolean);
+          if (!me.value.trim() || !participants.length) { out.textContent = "請填起草人和至少一位參與者。"; return; }
+          e.target.disabled = true; out.textContent = "AI 起草中…";
+          try {
+            const d = await api("/api/decisions/draft", { method: "POST",
+              body: { answer_id: data.answer_id, created_by: me.value.trim(), participants } });
+            out.replaceChildren("已建立草稿，", h("a", { href: d.url }, "前往確認與修改"), "。");
+          } catch (err) { out.textContent = err.message; e.target.disabled = false; }
+        } }, "建立決策草稿")),
+        out);
+      return details;
+    }
+
+    function renderSearch(data) {
+      const body = [h("h2", {}, "搜尋結果", h("span", { class: "meta" }, `${data.results.length} 筆`))];
+      if (!data.results.length) body.push(h("p", { class: "empty" }, "找不到相關內容，換個關鍵字試試。"));
+      for (const w of data.warnings) body.push(h("p", { class: "notice small" }, w));
+      body.push(h("div", { class: "sources" }, data.results.map((r, i) => {
+        const text = r.text.split("\n").slice(1).join(" ").trim();
+        const card = sourceCard({ ...r, snippet: text.length > 360 ? text.slice(0, 360) + "…" : text }, i + 1);
+        if (r.matched_by.includes("link")) card.append(h("span", { class: "by" }, "（由其他結果裡的連結帶出）"));
+        return card;
+      })));
+      resultEl.replaceChildren(...body);
+      sourcesTitle.hidden = true;
+      sourcesEl.replaceChildren();
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const question = questionEl.value.trim();
+      if (!question) return;
+      submitBtn.disabled = true;
+      const started = Date.now();
+      const label = kind === "ai" ? "Claude 正在查資料並整理回答" : "搜尋中";
+      const counter = h("span", {});
+      resultEl.replaceChildren(h("p", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), label, counter));
+      const tick = setInterval(() => (counter.textContent = `…${Math.round((Date.now() - started) / 1000)} 秒`), 1000);
+      try {
+        if (kind === "ai") {
+          renderAnswer(await api("/ask", { method: "POST", body: { question, session_id: sessionId } }));
+        } else {
+          const query = new URLSearchParams({ q: question, top_k: 8 });
+          if (sessionId) query.set("session_id", sessionId);
+          renderSearch(await api(`/search?${query}`));
+        }
+      } catch (err) {
+        resultEl.replaceChildren(h("p", { class: "notice error" }, err.message));
+      } finally {
+        clearInterval(tick);
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

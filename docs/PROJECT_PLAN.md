@@ -148,3 +148,23 @@ start.bat  start.sh  scripts/dev.py（一鍵啟動）  .env.example  pyproject.t
 刪除的檔案：`docker-compose.yml`（不再使用 PostgreSQL）、`scripts/init_db.py`（`ingest.py --init-db` 與 API 啟動時都會自動建表）、`backend/app/embeddings/st_model.py`（sentence-transformers）。
 
 其他細節：每個向量都記錄是哪個模型算的（`chunks.embedding_model`），換模型時只會重新計算不一致的部分，不會把不同模型的向量混在一起比；`.gitattributes` 確保 `.bat` 是 CRLF、`.sh` 是 LF，在任何系統 clone 下來都能執行。
+
+## 11. 完整版（M3–M5）實作狀態
+| 里程碑 | 狀態 | 內容 |
+|---|---|---|
+| M1 骨架 | 完成 | 設定、資料庫、LLM 介面、評估情境 |
+| M2 匯入與檢索 | 完成 | 三個連接器、混合搜尋、跨工具連結展開、`/search` |
+| M3 AI 問答 | 完成 | `/ask` 三種模式（rag / full / agent）、引用檢查、「建議詢問誰」、網頁介面 `/` |
+| M4 評估工具 | 完成 | 觀察者頁面 `/observer`：場次、計時、資深成員詢問次數、自動記錄查詢與來源點擊、引用標註（80% 門檻）、匯出 CSV |
+| M5 決策紀錄 | 完成 | AI 起草 → 修改 → 所有參與者確認 → 存成文件並重新索引；匯出 DECISIONS.md 格式 |
+| Seed 腳本 | 完成（只用 mock 測試） | `scripts/seed_workspace/seed.py`：兩階段寫入 GitHub / Notion / Discord，可中斷重跑 |
+
+與原規劃不同的地方：
+| 原規劃 | 實際做法 | 原因 |
+|---|---|---|
+| LLM 可切換：Claude CLI、Anthropic API、OpenAI、Ollama、Codex CLI | **只用 Claude CLI**（另有只給測試用的 `fake`） | 使用者決定只用目前的 Claude CLI，不保留其他選項 |
+| 前端用 Jinja2 + HTMX | 純 HTML + JavaScript（ES modules），由 FastAPI 提供靜態檔 | 不增加任何依賴，也不需要 Node.js |
+| Agent 模式自己寫工具迴圈 | 把專案匯出成 markdown 資料夾，讓 Claude Code 用唯讀的 Grep / Glob / Read 自己搜尋 | 一次 CLI 呼叫就能多步搜尋，不用自己維護工具協定；權限限制在唯讀工具與該資料夾 |
+| `run_golden.py` | `scripts/eval_modes.py`：同時比較三種模式，Claude 依答案 key 評分 | 回答「完整記憶 / 直接搜尋 / RAG 哪個準」這個問題；結果在 `docs/EVAL_MODES.md` |
+| `label_citations.py` | 引用標註做在觀察者頁面 | 評估時同一個畫面就能完成 |
+| Alembic migration | 啟動時自動補上新欄位（`add_missing_columns`） | 只有 SQLite、欄位都是新增，夠用且不增加依賴 |

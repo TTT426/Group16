@@ -134,7 +134,7 @@ def test_search_endpoint(db_session, embedder, ingested):
         assert body["results"] and {"url", "source", "title", "text", "matched_by"} <= set(body["results"][0])
         assert body["embedding_model"] == embedder.model_id and body["warnings"] == []
         assert client.get("/search", params={"q": ""}).status_code == 422
-        assert client.get("/", follow_redirects=False).headers["location"] == "/docs"
+        assert "<!doctype html>" in client.get("/").text.lower()
     finally:
         app.dependency_overrides.clear()
 
