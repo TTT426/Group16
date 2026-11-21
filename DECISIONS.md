@@ -39,3 +39,9 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What:** 提案 [#11](https://github.com/TTT426/Group16/pull/11)：LLM 只用 Claude Code CLI（移除 `anthropic_api`）；AI 問答預設 `rag`（rag / full / agent 三種模式在評估情境上準確度幾乎相同，98% / 98% / 100%，rag 最快，見 `docs/EVAL_MODES.md`）；網頁介面用純 HTML + JavaScript（不用 Jinja2 / HTMX）；決策紀錄要所有參與者確認後才存檔；資料庫新欄位在啟動時自動補上。
 **What the mainly change/improve** : 完整版 MVP：AI 問答、評估工具、決策紀錄、seed 腳本
 **Led by:** @boanhsu1213
+
+## 2026-11-21 — Code steward 審閱：PR #11
+**What:** TTT426 以 code steward 身分審閱 [#11](https://github.com/TTT426/Group16/pull/11)結果：核准。
+**What the mainly change/improve** : 完整版 MVP 功能串接、修關於 System Prompt 的穩定性問題
+**More comment** : should use PR templatement and avoid plug in too much infomation in a same  
+**Led by:** @boanhsu1213
