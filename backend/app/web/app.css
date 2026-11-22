@@ -230,6 +230,7 @@ ul.checks li::before { content: "✓"; position: absolute; left: 0.2rem; color: 
 .ill-box { fill: var(--paper); stroke: var(--rule); }
 .ill-green { fill: #1f883d; }
 .ill-ink { fill: var(--ink); }
+.ill-discord { fill: var(--tool-discord); }
 .ill-white { fill: #fff; font-family: system-ui, sans-serif; font-weight: 600; }
 .ill-ring { fill: none; stroke: #d97706; stroke-width: 3; stroke-dasharray: 6 4; }
 .ill-note { fill: #b45309; font-family: system-ui, sans-serif; font-weight: 700; }

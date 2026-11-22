@@ -16,6 +16,7 @@ from app.seeding import (
     GitHubSeeder,
     NotionSeeder,
     SeedState,
+    discord_seed_target,
     github_seed_target,
     markdown_to_blocks,
     notion_seed_target,
@@ -182,10 +183,22 @@ def test_notion_seed_target_is_a_separate_connection():
 
 
 def test_seed_workspace_settings_swap_in_the_seed_targets():
-    settings = Settings(_env_file=None, github_repo="team/real", seed_github_repo="me/seed",
-                        notion_token="ntn_real", seed_notion_token="ntn_seed", discord_guild_id="42")
+    settings = Settings(_env_file=None, github_repo="team/real", seed_github_repo="me/seed", notion_token="ntn_real",
+                        seed_notion_token="ntn_seed", discord_guild_id="42", seed_discord_guild_id="99")
     seeded = seed_workspace_settings(settings, ["github", "notion", "discord"])
-    assert (seeded.github_repo, seeded.notion_token) == ("me/seed", "ntn_seed")
-    assert seeded.discord_guild_id == "42"  # no separate seed setting yet: read as configured
+    assert (seeded.github_repo, seeded.notion_token, seeded.discord_guild_id) == ("me/seed", "ntn_seed", "99")
     with pytest.raises(ConnectorError, match="SEED_NOTION_TOKEN"):
         seed_workspace_settings(Settings(_env_file=None), ["notion"])
+
+
+def test_discord_seed_target_is_a_separate_server():
+    def target(**kw):
+        return discord_seed_target(Settings(_env_file=None, **kw))
+
+    with pytest.raises(ConnectorError, match="SEED_DISCORD_GUILD_ID"):
+        target(discord_bot_token="t", discord_guild_id="42")  # DISCORD_GUILD_ID alone is never a seed target
+    with pytest.raises(ConnectorError, match="same as DISCORD_GUILD_ID"):
+        target(discord_bot_token="t", discord_guild_id="42", seed_discord_guild_id="42")
+    with pytest.raises(ConnectorError, match="no bot token"):
+        target(seed_discord_guild_id="99")
+    assert target(discord_bot_token="t", discord_guild_id="42", seed_discord_guild_id="99") == ("t", "99")

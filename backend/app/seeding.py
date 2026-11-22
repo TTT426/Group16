@@ -94,16 +94,34 @@ def notion_seed_target(settings: Settings) -> tuple[str, str]:
     return token, settings.notion_parent_page_id.strip()
 
 
+def discord_seed_target(settings: Settings) -> tuple[str, str]:
+    """(bot token, server id) to seed into: a separate test server, never the one the app reads."""
+    guild_id = settings.seed_discord_guild_id.strip()
+    if not guild_id:
+        raise ConnectorError("discord: set SEED_DISCORD_GUILD_ID in .env to a separate test server. Seeding creates "
+                             "channels and threads and posts messages there.")
+    if guild_id == settings.discord_guild_id.strip():
+        raise ConnectorError("discord: SEED_DISCORD_GUILD_ID is the same as DISCORD_GUILD_ID, the team's server. "
+                             "Seeding would post fake threads into it, even into existing channels; "
+                             "use a separate test server.")
+    if not settings.discord_bot_token.strip():
+        raise ConnectorError("discord: no bot token. Connect Discord on the /connect page "
+                             "or set DISCORD_BOT_TOKEN.")
+    return settings.discord_bot_token.strip(), guild_id
+
+
 # Read setting -> seed setting, per source: what `ingest.py --seed-workspace` swaps in.
-SEED_SETTINGS = {"github": ("github_repo", "seed_github_repo"), "notion": ("notion_token", "seed_notion_token")}
+SEED_SETTINGS = {
+    "github": ("github_repo", "seed_github_repo"),
+    "notion": ("notion_token", "seed_notion_token"),
+    "discord": ("discord_guild_id", "seed_discord_guild_id"),
+}
 
 
 def seed_workspace_settings(settings: Settings, sources: list[str]) -> Settings:
     """Settings that read the seeded test workspace instead of the team's real tools, for the given sources."""
     updates = {}
     for source in sources:
-        if source not in SEED_SETTINGS:  # no separate seed setting: the seed script writes where the app reads
-            continue
         read, seed = SEED_SETTINGS[source]
         if not getattr(settings, seed):
             raise ConnectorError(f"{source}: {seed.upper()} is not set, so there is no seeded workspace to read.")

@@ -60,6 +60,12 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What the mainly change/improve** : Connect tools page (Notion), separate seed connection
 **Led by:** @gdpps1028
 
+## 2026-11-22 — Connect Discord from the browser; separate seed server (proposal, pending team confirmation)
+**What:** "Connect tools" gets a Discord flow (`/connect/discord`): create one bot for the team, switch on Message Content Intent, paste its token, invite it with read-only permissions (View Channels, Read Message History), choose the server, import. The seed script posts into a separate test server (`SEED_DISCORD_GUILD_ID`) and refuses to run when it equals `DISCORD_GUILD_ID`.
+**Why:** Seeding creates channels and threads in its server and reuses existing channels with matching names, so seeding into the team's server would post fake threads into real channels. Discord has no sign-in a local app can use without a server-side secret, so a guided "paste the bot token" flow is the simplest option; the page derives everything else from the token.
+**What the mainly change/improve** : Connect tools page (Discord), separate seed server
+**Led by:** @gdpps1028
+
 ## 2026-11-22 — Code steward 審閱：PR #13
 
 **What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/13) 

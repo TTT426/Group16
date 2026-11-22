@@ -69,7 +69,12 @@ Connect the team's own tools so that search and AI answers use your real data (u
 2. **Choose pages**: share the team's pages with the connection (its *Content access* tab, or *••• → Connections* on a page). The page lists what the connection can see.
 3. **Import**: reads every shared page, including sub-pages and database entries.
 
-Settings are saved to `.env` and apply immediately. Discord is coming soon.
+**Discord**
+1. **Create a bot** (one per team; teammates can share its token privately): the page walks through the Developer Portal, copying the token and switching on *Message Content Intent*, and checks the intent automatically.
+2. **Add it to the server**: the page generates the invite link (read-only permissions: View Channels and Read Message History) and picks the server, or lets you choose if the bot is in several.
+3. **Import**: reads threads (including forum posts and archived threads) and channel messages the bot can see.
+
+Settings are saved to `.env` and apply immediately.
 
 > "Sign in with GitHub" needs the client id of a GitHub OAuth App (`GITHUB_CLIENT_ID`, public). Until it is set, that button is hidden and the other two sign-in options work as usual.
 
@@ -77,6 +82,7 @@ Settings are saved to `.env` and apply immediately. Discord is coming soon.
 > The seed script **writes** the scenarios into a separate test workspace, never into the tools the app reads:
 > - GitHub: `SEED_GITHUB_REPO`, an empty test repo (it creates issues, merges pull requests and commits files), not `GITHUB_REPO`.
 > - Notion: `SEED_NOTION_TOKEN`, a separate connection that can see `NOTION_PARENT_PAGE_ID`, not `NOTION_TOKEN` (everything the app's connection can see is imported).
+> - Discord: `SEED_DISCORD_GUILD_ID`, a separate test server (the same bot can be in both), not `DISCORD_GUILD_ID` (seeding creates channels and threads, and reuses existing channels with matching names).
 >
 > Seeding refuses to run when a seed setting equals the one the app reads.
 
@@ -111,7 +117,7 @@ ruff check .                        # lint（合併前必須通過）
 | `/api/eval/...` | 評估場次、引用標註、`export.csv` |
 | `/api/decisions/...` | 決策草稿、修改、確認、`export.md` |
 | `POST /ingest` | 從真實工具匯入 |
-| `/connect`, `/api/github/...`, `/api/notion/...` | Connect tools: sign-in, choices, import (localhost only) |
+| `/connect`, `/api/github/...`, `/api/notion/...`, `/api/discord/...` | Connect tools: sign-in, choices, import (localhost only) |
 | `GET /api/config`、`GET /health` | 目前設定 |
 
 完整說明在 `/docs`。
