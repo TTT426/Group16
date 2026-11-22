@@ -26,6 +26,7 @@
 | 選項 | 用途 |
 |---|---|
 | `--port 9000` | 指定 port（預設 8001；被佔用時會自動換下一個） |
+| `--dev` | 同時安裝 pytest、ruff 等開發工具；可與 `--minimal` 搭配 |
 | `--minimal` | 最精簡安裝：不下載 embedding 模型，搜尋只比對字詞 |
 | `--reset` | 刪除本機資料庫，重新匯入情境 |
 | `--no-browser` | 不自動開啟瀏覽器 |
@@ -95,6 +96,26 @@ python scripts/ingest.py --reset --seed-workspace github notion discord   # inde
 ```
 
 ## 開發
+
+macOS / Linux 可直接準備開發環境並啟動：
+
+```bash
+./start.sh --dev
+# 不需要語意模型時：./start.sh --dev --minimal
+```
+
+一般啟動不安裝測試工具。執行上方命令後，可在另一個終端機執行：
+
+```bash
+.venv/bin/python -m pytest -q -rs
+.venv/bin/python -m ruff check .
+# 包含真實 embedding 模型的測試（需安裝 embeddings 並可取得模型）
+GROUP16_TEST_EMBEDDER=fastembed .venv/bin/python -m pytest -q -rs
+```
+
+`--dev` 也支援 Windows 的 `start.bat`。切換安裝選項會更新套件；它不會移除先前已安裝的選用套件。
+
+手動安裝方式：
 
 ```bash
 .venv\Scripts\activate              # macOS/Linux: source .venv/bin/activate
