@@ -1,6 +1,7 @@
 """FastAPI entry point:  uvicorn app.main:app --app-dir backend   (or just run start.bat / start.sh)
 
-Pages:  /  (ask / search)   /observer  (evaluation sessions)   /decisions  (decision log)   /docs  (API)
+Pages:  /  (ask / search)   /observer  (evaluation sessions)   /decisions  (decision log)
+        /connect  (connect the team's tools)   /docs  (API)
 """
 
 from contextlib import asynccontextmanager
@@ -12,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
-from .api import ask, decisions, evaluation, ingest, search
+from .api import ask, decisions, evaluation, hub, ingest, search
 from .config import REPO_ROOT, get_settings
 from .db.models import Document
 from .db.session import get_session_factory, init_db
@@ -35,6 +36,7 @@ app.include_router(ask.router)
 app.include_router(ingest.router)
 app.include_router(evaluation.router)
 app.include_router(decisions.router)
+app.include_router(hub.router)  # /connect: connect GitHub / Notion / Discord and import
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 

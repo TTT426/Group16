@@ -57,13 +57,26 @@ AI 回答有三種模式，用 `.env` 的 `QA_MODE` 設定，比較結果見 [do
 ### 決策紀錄（`/decisions`）
 在 AI 回答下方按「建立決策草稿」，Claude 會起草；所有參與者在決策紀錄頁按下確認後才會存檔，之後的查詢也搜得到它。草稿修改後，之前的確認會失效。可以匯出成 `DECISIONS.md` 的格式。
 
+### Connect tools (`/connect`)
+Connect the team's own tools so that search and AI answers use your real data (until then, they use the built-in practice scenario). No need to edit `.env` by hand; every step explains what is needed and shows illustrations:
+
+1. **Sign in to GitHub**: "Sign in with GitHub" (type a short code on github.com), the GitHub CLI login already on this computer (`gh`), or a personal access token. Public repos also work without signing in.
+2. **Choose a repo**: pick one from your repo list, or paste the URL of any repo.
+3. **Import**: reads issues, pull requests (with comments and reviews) and Markdown files. Press "re-import" later to update.
+
+Settings are saved to `.env` and apply immediately. Notion and Discord are coming soon.
+
+> "Sign in with GitHub" needs the client id of a GitHub OAuth App (`GITHUB_CLIENT_ID`, public). Until it is set, that button is hidden and the other two sign-in options work as usual.
+
 ## 建立評估用的真實工作區
+> The seed script **writes** the scenarios into `SEED_GITHUB_REPO`, an empty test repo (it creates issues, merges pull requests and commits files). That is separate from `GITHUB_REPO`, the team's real repo set on the "Connect tools" page, which is only read. Seeding refuses to run when the two are the same.
+
 評估的對照輪需要受試者在真的 GitHub、Notion、Discord 上找資料。先在 `.env` 填好 token（設定方式見 `.env.example` 的註解），然後：
 
 ```bash
 python scripts/seed_workspace/seed.py --dry-run               # 先看會建立什麼
 python scripts/seed_workspace/seed.py github notion discord   # 建立（可中斷後重跑，不會重複）
-python scripts/ingest.py --reset github notion discord        # 改用真實工具的資料
+python scripts/ingest.py --reset --seed-repo github notion discord   # index the seeded test workspace
 ```
 
 ## 開發
@@ -109,6 +122,7 @@ ruff check .                        # lint（合併前必須通過）
 | `/api/eval/...` | 評估場次、引用標註、`export.csv` |
 | `/api/decisions/...` | 決策草稿、修改、確認、`export.md` |
 | `POST /ingest` | 從真實工具匯入 |
+| `/connect`, `/api/github/...` | Connect tools: GitHub sign-in, repo choice, import (localhost only) |
 | `GET /api/config`、`GET /health` | 目前設定 |
 
 完整說明在 `/docs`。

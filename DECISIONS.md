@@ -39,3 +39,15 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What:** 提案 [#11](https://github.com/TTT426/Group16/pull/11)：LLM 只用 Claude Code CLI（移除 `anthropic_api`）；AI 問答預設 `rag`（rag / full / agent 三種模式在評估情境上準確度幾乎相同，98% / 98% / 100%，rag 最快，見 `docs/EVAL_MODES.md`）；網頁介面用純 HTML + JavaScript（不用 Jinja2 / HTMX）；決策紀錄要所有參與者確認後才存檔；資料庫新欄位在啟動時自動補上。
 **What the mainly change/improve** : 完整版 MVP：AI 問答、評估工具、決策紀錄、seed 腳本
 **Led by:** @boanhsu1213
+
+## 2026-11-21 — Code steward 審閱：PR #11
+**What:** TTT426 以 code steward 身分審閱 [#11](https://github.com/TTT426/Group16/pull/11)結果：核准。
+**What the mainly change/improve** : 完整版 MVP 功能串接、修關於 System Prompt 的穩定性問題
+**More comment** : should use PR templatement and avoid plug in too much infomation in a same  
+**Led by:** @boanhsu1213
+
+## 2026-11-21 — Connect tools from the browser; separate seed repo (proposal, pending team confirmation)
+**What:** New "Connect tools" page (`/connect`). GitHub is set up in three steps (sign in → choose a repo → import), and the page writes the settings to `.env`, so nobody edits it by hand. Sign-in options: OAuth device flow (needs one GitHub OAuth App registered by the team; `GITHUB_CLIENT_ID` is public), the existing `gh` CLI login, or a fine-grained token. These routes only accept localhost requests, refuse cross-site requests, and never send tokens to the browser. GitHub document ids now include the repo (`owner/repo#issue:1`). The seed script writes to a new `SEED_GITHUB_REPO`; `GITHUB_REPO` is only read, and seeding refuses to run when the two are the same.
+**Why:** Connecting real tools meant editing `.env` and working out token permissions by hand, which is too hard for new members. `GITHUB_REPO` meant both "the repo to read" and "the empty test repo the seed script writes into", so after connecting the team's real repo, seeding would have written fake content into it (including commits to main). GitHub items from different repos with the same number overwrote each other.
+**What the mainly change/improve** : Connect tools page (GitHub), separate seed repo
+**Led by:** @gdpps1028

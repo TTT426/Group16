@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 
 import httpx
 
-from .base import NormalizedDocument, parse_datetime
+from .base import NormalizedDocument, github_external_id, parse_datetime
 from .http import request
 
 API_URL = "https://api.github.com"
@@ -97,7 +97,7 @@ class GitHubConnector:
         kind = "Pull request" if is_pr else "Issue"
         return NormalizedDocument(
             source="github",
-            external_id=f"{'pr' if is_pr else 'issue'}:{number}",
+            external_id=github_external_id(self.repo, f"{'pr' if is_pr else 'issue'}:{number}"),
             url=item["html_url"],
             title=f"{kind} #{number}: {item.get('title', '')}",
             author=author,
@@ -132,7 +132,7 @@ class GitHubConnector:
                 continue
             yield NormalizedDocument(
                 source="github",
-                external_id=f"file:{path}",
+                external_id=github_external_id(self.repo, f"file:{path}"),
                 url=content.get("html_url") or f"https://github.com/{self.repo}/blob/{branch}/{path}",
                 title=f"File: {path}",
                 text=f"File: {path}\n\n{text}".strip(),

@@ -73,7 +73,7 @@ def ensure_env_file() -> None:
     env_file = REPO / ".env"
     if not env_file.exists():
         shutil.copyfile(REPO / ".env.example", env_file)
-        say("已建立 .env（預設設定即可使用；要接 GitHub / Notion / Discord 再填 token）。")
+        say("已建立 .env（預設設定即可使用；要接 GitHub / Notion / Discord，請在瀏覽器的「連接工具」頁面設定）。")
 
 
 def load_scenarios(env: dict, reset: bool) -> dict:
@@ -114,7 +114,8 @@ def open_browser_when_ready(url: str) -> None:
             time.sleep(0.5)
     else:
         return
-    say(f"已啟動：{url}/   評估觀察：{url}/observer   決策紀錄：{url}/decisions   （按 Ctrl+C 停止）")
+    say(f"已啟動：{url}/   連接工具：{url}/connect   評估觀察：{url}/observer   決策紀錄：{url}/decisions"
+        "   （按 Ctrl+C 停止）")
     webbrowser.open(f"{url}/")
 
 

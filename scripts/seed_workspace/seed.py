@@ -3,10 +3,11 @@
   python scripts/seed_workspace/seed.py --dry-run              # show what would be created
   python scripts/seed_workspace/seed.py github notion discord  # create everything (resumable)
 
-Needs in .env: GITHUB_TOKEN + GITHUB_REPO (an empty test repo), NOTION_TOKEN + NOTION_PARENT_PAGE_ID
+Needs in .env: SEED_GITHUB_REPO (an empty test repo, never GITHUB_REPO) + a GitHub login (the connect page, or
+GITHUB_TOKEN), NOTION_TOKEN + NOTION_PARENT_PAGE_ID
 (a page shared with the integration), DISCORD_BOT_TOKEN + DISCORD_GUILD_ID (bot with Manage Channels,
 Create Public Threads and Manage Webhooks). Progress is kept in data/seed_state.json; delete it to seed again.
-Afterwards index the real tools:  python scripts/ingest.py --reset github notion discord
+Afterwards index the seeded tools:  python scripts/ingest.py --reset --seed-repo github notion discord
 """
 
 import argparse
@@ -19,7 +20,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
 from app.config import REPO_ROOT, get_settings  # noqa: E402
 from app.connectors.base import ConnectorError  # noqa: E402
-from app.seeding import DiscordSeeder, GitHubSeeder, NotionSeeder, SeedState, seed  # noqa: E402
+from app.seeding import (  # noqa: E402
+    DiscordSeeder,
+    GitHubSeeder,
+    NotionSeeder,
+    SeedState,
+    github_seed_target,
+    seed,
+)
 
 PLATFORMS = ("github", "notion", "discord")
 
@@ -47,7 +55,7 @@ def main() -> None:
 
     settings = get_settings()
     builders = {
-        "github": lambda: GitHubSeeder(settings.github_repo, settings.github_token, merge=not args.no_merge),
+        "github": lambda: GitHubSeeder(*github_seed_target(settings), merge=not args.no_merge),
         "notion": lambda: NotionSeeder(settings.notion_token, settings.notion_parent_page_id),
         "discord": lambda: DiscordSeeder(settings.discord_bot_token, settings.discord_guild_id),
     }
