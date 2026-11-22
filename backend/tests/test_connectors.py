@@ -75,8 +75,8 @@ def test_github_fetches_issues_prs_comments_and_markdown():
     docs = list(GitHubConnector("acme/shop", "tok", client=client).fetch())
 
     by_id = {d.external_id: d for d in docs}
-    assert set(by_id) == {"issue:1", "pr:2", "file:README.md"}
-    issue, pr, readme = by_id["issue:1"], by_id["pr:2"], by_id["file:README.md"]
+    assert set(by_id) == {"acme/shop#issue:1", "acme/shop#pr:2", "acme/shop#file:README.md"}
+    issue, pr, readme = by_id["acme/shop#issue:1"], by_id["acme/shop#pr:2"], by_id["acme/shop#file:README.md"]
     assert issue.url == "https://github.com/acme/shop/issues/1"
     assert "PAYMENT_DUPLICATE" in issue.text and "See Discord thread" in issue.text and "Labels: bug" in issue.text
     assert "State: merged" in pr.text and "[review on checkout.py] Keep the retry" in pr.text

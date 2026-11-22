@@ -8,8 +8,18 @@ import httpx
 import pytest
 import yaml
 
+from app import github_account
+from app.config import Settings
 from app.connectors.base import ConnectorError
-from app.seeding import DiscordSeeder, GitHubSeeder, NotionSeeder, SeedState, markdown_to_blocks, seed
+from app.seeding import (
+    DiscordSeeder,
+    GitHubSeeder,
+    NotionSeeder,
+    SeedState,
+    github_seed_target,
+    markdown_to_blocks,
+    seed,
+)
 
 SCENARIO_DIR = Path(__file__).resolve().parents[2] / "scripts" / "seed_workspace"
 SCENARIOS = [yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted(SCENARIO_DIR.glob("scenario_*.yaml"))]
@@ -137,3 +147,20 @@ def test_missing_credentials_rejected():
         NotionSeeder("t", "")
     with pytest.raises(ConnectorError):
         DiscordSeeder("", "g")
+
+
+def test_seed_target_is_separate_from_the_repo_the_app_reads(monkeypatch):
+    monkeypatch.setattr(github_account, "gh_cli_token", lambda: "gho_cli")
+
+    def target(**kw):
+        return github_seed_target(Settings(_env_file=None, **kw))
+
+    with pytest.raises(ConnectorError, match="SEED_GITHUB_REPO"):
+        target(github_repo="team/real", github_token="tok")  # GITHUB_REPO alone is never a seed target
+    with pytest.raises(ConnectorError, match="same as GITHUB_REPO"):
+        target(github_repo="Team/Real", seed_github_repo="team/real", github_token="tok")
+    with pytest.raises(ConnectorError, match="no GitHub login"):
+        target(seed_github_repo="me/seed-test")
+    both = target(github_repo="team/real", seed_github_repo="me/seed-test", github_token="tok")
+    assert both == ("me/seed-test", "tok")
+    assert target(seed_github_repo="me/seed-test", github_use_gh_cli=True) == ("me/seed-test", "gho_cli")

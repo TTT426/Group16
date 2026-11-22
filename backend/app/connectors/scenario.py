@@ -15,11 +15,12 @@ from pathlib import Path
 
 import yaml
 
-from .base import NormalizedDocument
+from .base import NormalizedDocument, github_external_id
 from .discord import format_messages
 from .github import format_issue_text
 
-GITHUB_REPO_URL = "https://github.com/example/shoplite"
+SCENARIO_REPO = "example/shoplite"
+GITHUB_REPO_URL = f"https://github.com/{SCENARIO_REPO}"
 DISCORD_GUILD_ID = "100000000000000000"
 _PLACEHOLDER = re.compile(r"\{\{\s*([a-z]+\.[a-z]+\.[\w-]+)\s*\}\}")
 _FAKE_TS = "2026-10-01T09:00:00+00:00"
@@ -74,7 +75,7 @@ class ScenarioConnector:
             label = "Pull request" if kind == "pull" else "Issue"
             yield NormalizedDocument(
                 source="github",
-                external_id=f"{'pr' if kind == 'pull' else 'issue'}:{number}",
+                external_id=github_external_id(SCENARIO_REPO, f"{'pr' if kind == 'pull' else 'issue'}:{number}"),
                 url=url,
                 title=f"{label} #{number}: {item['title']}",
                 author=item.get("author"),
@@ -92,7 +93,7 @@ class ScenarioConnector:
         for f in s["github"].get("files", []):
             yield NormalizedDocument(
                 source="github",
-                external_id=f"file:{f['path']}",
+                external_id=github_external_id(SCENARIO_REPO, f"file:{f['path']}"),
                 url=f"{GITHUB_REPO_URL}/blob/main/{f['path']}",
                 title=f"File: {f['path']}",
                 text=f"File: {f['path']}\n\n{self.resolve(f['content'])}".strip(),

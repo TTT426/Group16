@@ -14,6 +14,7 @@
       <a href="/" aria-current="page">查詢</a>
       <a href="/decisions">決策紀錄</a>
       <a href="/observer">評估</a>
+      <a href="/connect">連接工具</a>
     </nav>
     <span class="status" id="status">連線中…</span>
   </header>
@@ -96,6 +97,16 @@
         examples.parentElement.prepend(h("p", { class: "notice" }, "目前沒有任何資料。請先執行 start.bat（會匯入評估情境），或用 scripts/ingest.py 匯入。"));
       }
     });
+
+    // Nothing of the team's own connected yet: point to the connect page (never during an evaluation session).
+    if (!sessionId) {
+      api("/api/connections").then((c) => {
+        if (c.github.repo) return;
+        document.querySelector("main .lede").after(h("p", { class: "notice" },
+          "目前查詢的是內建的示範情境。要查你們自己的專案，請先",
+          h("a", { href: "/connect" }, "連接你們的 GitHub repo"), "。"));
+      }).catch(() => {});
+    }
 
     function sourceCard(s, label, extra = {}) {
       const link = goUrl(s.url, { session_id: sessionId, ...extra });
