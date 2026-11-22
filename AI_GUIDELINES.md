@@ -99,3 +99,41 @@ CONTRIBUTORS.md` before considering approval.
 
 These examples demonstrate that AI output is advisory. Passing human review
 and producing observable evidence are required before acceptance.
+
+## Section 4 — Pull Request Order (proposal, pending team confirmation)
+
+Every change reaches `main` through a pull request, in this order. Review
+happens before merge, and the decision record goes in with the change it
+describes.
+
+1. **Branch.** Branch from the latest `main` as `<name>-<topic>`. One topic
+   per PR. Do not stack a PR on another unmerged branch; wait until that PR
+   is merged, then branch from `main`.
+2. **Prepare.** Before asking for review, the author:
+   - merges the latest `main` into the branch;
+   - runs `pytest` and `ruff check .` on a clean checkout (a fresh clone or
+     worktree, without a reused local database) and reports the results;
+   - states AI use in the PR body and adds a log under `docs/prompts/`
+     (Section 2).
+3. **Review.** A team member other than the author acts as code steward
+   for the PR. The steward reads every changed file, reruns the tests on a
+   clean checkout of the PR merged with the current `main`, and submits a
+   formal GitHub review. A comment alone is not a review.
+4. **AI-assisted review.** AI may draft a review. It must not approve or
+   merge without the steward's instruction for that specific PR. The steward
+   must read the diff, be able to explain it, and state in the review that
+   it was AI-assisted.
+5. **Record before approval.** The steward review entry in `DECISIONS.md`
+   (`Code steward 審閱：PR #N`), and any decision the PR makes, are committed
+   to the same PR branch before the final Approve. Write each entry as it
+   will read after merge, so that it does not say "not yet merged".
+6. **Approve, then merge.** The steward submits Approve after the record
+   commit, checks that the branch is up to date with `main` and the tests
+   still pass, and merges with a merge commit. No one merges a PR that has
+   no Approve from someone other than the author.
+7. **No direct pushes to `main`,** including documentation such as
+   `DECISIONS.md`. A fix to a record that is already merged goes through its
+   own PR.
+8. **Updating a PR.** To sync a PR with `main`, update its branch; do not
+   open a duplicate PR. When a PR is closed without merging, leave a comment
+   saying why.

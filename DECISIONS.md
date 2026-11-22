@@ -109,3 +109,10 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation.
 **Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md.
 **Led by:** @hojinpongcs09-lab (Codex-assisted).
+
+## 2026-11-22 — PR 處理順序：先審閱、記錄，再合併（提案，待組內確認）
+
+**What:** 在 [AI_GUIDELINES.md](AI_GUIDELINES.md) 新增 Section 4〈Pull Request Order〉：從最新 main 開分支、一個 PR 一個主題、不堆疊 PR；作者在乾淨環境跑 pytest + ruff；由作者以外的組員擔任 code steward，在乾淨環境重跑測試並送出正式 review；AI 只能起草 review，核准與合併要 steward 針對該 PR 下指示；steward 審閱紀錄要在最後 Approve 前 commit 進同一個 PR；先 Approve 再合併；所有改動（包含 DECISIONS.md）都不直接推 main；同步用原本的 PR，不開重複 PR。 \
+**Why:** 回顧 #9–#17：#9 沒有 review 就合併；#11 合併後才收到 review；#14、#15、#12 都是 AI 準備的核准，並在一兩分鐘內就合併；steward 紀錄在合併後才直接推 main 或另開 PR（#17）；#16 是 #12 的重複 PR。main 已有分支保護，必須透過 PR，所以合併後才補紀錄會多一輪審閱。 \
+**What the mainly change/improve** : 固定 PR 從開分支到合併的順序，讓審閱在合併前完成、紀錄跟著改動一起進 main \
+**Led by:** @boanhsu1213
