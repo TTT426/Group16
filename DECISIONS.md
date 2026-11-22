@@ -109,3 +109,11 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation.
 **Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md.
 **Led by:** @hojinpongcs09-lab (Codex-assisted).
+
+## 2026-11-22 — Code steward 審閱：PR #12
+
+**What:** boanhsu1213 以 code steward 身分審閱並合併 [#12](https://github.com/TTT426/Group16/pull/12)（merge 18b49a9） \
+**Outcome:** approved \
+**What the mainly change/improve:** `start.sh` / `start.bat` 加上 `--dev`，一次安裝 pytest、ruff 等開發工具，可與 `--minimal` 搭配 \
+**More comment:** 在全新環境（合併最新 main 6ea3a4f）測試：125 passed、1 skipped、1 failed。失敗的 `test_config_lists_modes_and_scenarios` 是 main 原本就有的 bug（見〈Follow-up to the PR #11 steward review〉），不是這個 PR 造成的；ruff 通過。Review 由 Claude Code 協助準備。 \
+**Led by:** @hojinpongcs09-lab
