@@ -84,3 +84,18 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Follow-up:** : Just record this bug now. \
 **Process note (proposal, pending team confirmation):** Submit reviews as formal GitHub reviews before merging, and run the tests on a clean checkout before approving. \
 **Led by:** @TTT426
+
+
+## 2026-11-22 — Code steward reviews: PR #14 and PR #15
+**What:** At @hojinpongcs09-lab's request, Codex inspected both PRs, ran related tests on macOS, and submitted English substantive reviews with formal Approve under @hojinpongcs09-lab's account before merging. PR #14 (Notion) was merged first, then PR #15 (Discord), both into main rather than their old stacked base branches.
+**Outcome:** Approved and merged. Notion: 33 related tests passed; Discord: 41 related tests passed; Ruff passed for both. DECISIONS.md conflicts were resolved by preserving both branches' records; no application code was changed during conflict resolution.
+**Review comments:** Verified token validation and exclusion from responses, seed/real workspace separation, and Discord server membership checks and read-only invite permissions. Suggested additional import success and ConnectorError rollback/502 tests as non-blocking follow-up. Real-account validation was not repeated by this reviewer; Discord thread imports remain unverified.
+**Evidence:** [PR #14](https://github.com/TTT426/Group16/pull/14), merge a51518f; [PR #15](https://github.com/TTT426/Group16/pull/15), merge 5d39fe8. Formal reviews and comments are recorded in GitHub.
+**Led by:** @hojinpongcs09-lab (AI-assisted; authorized review and merge).
+
+## 2026-11-22 — Sync PR #12 after Notion and Discord merges
+**What:** Updated the original [PR #12](https://github.com/TTT426/Group16/pull/12) branch hjp-macos-setup with main at 5d39fe8. Retained --dev installation, minimal-mode compatibility, install-stamp behavior and fallback preserving development tools, alongside the new Notion and Discord connection flows.
+**Why:** Keep the macOS development setup compatible with the current product without replacing teammates' connection features.
+**Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation.
+**Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md.
+**Led by:** @hojinpongcs09-lab (Codex-assisted).
