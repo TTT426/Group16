@@ -59,9 +59,10 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/13) \
 **Outcome:** approved \
 **What the mainly change/improve:** \
-1. Add more readable GUI interface \
-2. Connect GitHub from the browser \
-**Led by:** @gdpps1028
+1. Add more readable GUI interface 
+2. Connect GitHub from the browser
+
+**Led by:** @gdpps1028 \
 
 ## 2026-11-22 — Follow-up to the PR #11 steward review
 
