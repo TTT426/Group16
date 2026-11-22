@@ -80,6 +80,20 @@ def github_seed_target(settings: Settings) -> tuple[str, str]:
     return repo, token
 
 
+def notion_seed_target(settings: Settings) -> tuple[str, str]:
+    """(token, parent page id) to seed into: a separate connection, never the one the app imports with."""
+    token = settings.seed_notion_token.strip()
+    if not token:
+        raise ConnectorError("notion: set SEED_NOTION_TOKEN in .env to the API token of a separate connection for "
+                             "the test workspace. Every page the app's connection can see is imported.")
+    if token == settings.notion_token.strip():
+        raise ConnectorError("notion: SEED_NOTION_TOKEN is the same as NOTION_TOKEN, the connection the app imports "
+                             "with. Seeded pages would show up next to the team's real pages; use a separate one.")
+    if not settings.notion_parent_page_id.strip():
+        raise ConnectorError("notion: set NOTION_PARENT_PAGE_ID to a page shared with the seed connection.")
+    return token, settings.notion_parent_page_id.strip()
+
+
 class GitHubSeeder(_Seeder):
     source = "github"
 
