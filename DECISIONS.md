@@ -9,32 +9,41 @@
 
 **What:** 後端用 Python + FastAPI；資料庫用 PostgreSQL 16 + pgvector + pg_trgm；embedding 預設用本地的 `BAAI/bge-m3`；前端用 Jinja2 + HTMX。 \
 **Why:** 全組只需要會 Python；一個資料庫就能放文件、向量、決策和評估紀錄；bge-m3 支援中英文、免費，而且訂閱制 LLM 本來就不提供 embedding。 \
-**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉）。之後資料庫、embedding 的部分被〈降低外部依賴〉取代，pg_trgm 被〈M2 檢索與連接器〉取代，前端改為純 HTML + JavaScript（〈完整版〉提案）。
+**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉）。之後資料庫、embedding 的部分被〈降低外部依賴〉取代，pg_trgm 被〈M2 檢索與連接器〉取代，前端改為純 HTML + JavaScript（〈完整版〉提案）。 \
+**What the mainly change/improve** : 初版技術選型：後端、資料庫、embedding、前端（[#9](https://github.com/TTT426/Group16/pull/9)） \
+**Led by:** @boanhsu1213
 
 ## 2026-11-21 — LLM 介面抽象化、可以切換（提案，待組內確認）
 
 **What:** 所有 LLM 呼叫都透過 `LLMProvider` 介面，用 `LLM_PROVIDER` 環境變數切換：`claude_cli`（Claude 訂閱）、`anthropic_api`（API 按量計費）、`fake`（離線開發 / 測試）；`openai_api`、`ollama`、`codex_cli` 留到 M5。 \
 **Why:** 開發和 demo 可以用訂閱額度省錢；正式評估如果有額度或使用條款上的疑慮，可以直接改用 API，程式不用改。 \
-**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉）。`LLMProvider` 介面保留；〈完整版〉提案改為只使用 Claude CLI（待確認）。 
+**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉）。`LLMProvider` 介面保留；〈完整版〉提案改為只使用 Claude CLI（待確認）。 \
+**What the mainly change/improve** : `LLMProvider` 介面，用 `LLM_PROVIDER` 切換 LLM（[#9](https://github.com/TTT426/Group16/pull/9)） \
+**Led by:** @boanhsu1213
 
 ## 2026-11-21 — M2 檢索與連接器實作方式（提案，待組內確認）
 
 **What:** 關鍵字搜尋改用 Python 內的 BM25（中文用單字＋雙字詞切分），不用 `pg_trgm`；Discord 改用 REST API，不用 `discord.py`；加入 `ruff` 當 linter；DB 測試用 `pgserver` 內嵌 Postgres。 \
 **Why:** `pg_trgm` 對中文不可靠；只讀歷史訊息不需要 gateway 連線；AI_GUIDELINES 要求通過 linter 才能合併，但原本沒有 linter；組員不一定有 Docker。 \
-**Status:** 提案（小組討論尚未表決這筆）。「DB 測試用 pgserver」已被〈降低外部依賴〉取代（改用暫存 SQLite）。細節見 `docs/PROJECT_PLAN.md` §9。 
+**Status:** 提案（小組討論尚未表決這筆）。「DB 測試用 pgserver」已被〈降低外部依賴〉取代（改用暫存 SQLite）。細節見 `docs/PROJECT_PLAN.md` §9。 \
+**What the mainly change/improve** : M2 檢索與連接器：BM25 關鍵字搜尋、Discord REST API、加入 ruff（[#9](https://github.com/TTT426/Group16/pull/9)） \
+**Led by:** @boanhsu1213
 
 ## 2026-11-21 — 降低外部依賴：SQLite、fastembed、一鍵啟動（提案，待組內確認）
 
 **What:** 資料庫只用 SQLite 檔案（不保留 PostgreSQL 選項，不再需要 pgvector / Docker）；embedding 改成 fastembed + `BAAI/bge-small-zh-v1.5`（不需要 torch，裝不起來時自動退回 hashing），移除 sentence-transformers；`LLM_PROVIDER` 預設 `auto`；新增 `start.bat` / `start.sh` 一鍵啟動。這筆取代前面「PostgreSQL + pgvector、bge-m3」的提案內容。 \
 **Why:** 組員的電腦環境不同（沒有 Docker、Windows 中文路徑、Mac / Linux），原本的依賴容易裝不起來；在兩個評估情境的檢索測試中，小模型（命中 21/24）比 bge-m3（17/24）好，而且快約 10 倍。 \
-**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉；Code steward 已核准 PR #10）。`LLM_PROVIDER` 預設 `auto` 由〈完整版〉提案改為只用 Claude CLI（待確認）。細節見 `docs/PROJECT_PLAN.md` §10。
+**Status:** 已確認（見下方〈2026-11-21 小組討論結果〉；Code steward 已核准 PR #10）。`LLM_PROVIDER` 預設 `auto` 由〈完整版〉提案改為只用 Claude CLI（待確認）。細節見 `docs/PROJECT_PLAN.md` §10。 \
+**What the mainly change/improve** : 降低外部依賴：SQLite、fastembed、一鍵啟動（[#10](https://github.com/TTT426/Group16/pull/10)） \
+**Led by:** @boanhsu1213
 
 ## 2026-11-21 — Code steward 審閱：PR #10
 
-**What:** Nathan 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10) \
+**What:** @gdpps1028 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10) \
 **Outcome**：approved \
 **What the mainly change/improve** : 降低外部依賴：SQLite、fastembed、一鍵啟動 \
-**Led by:** @boanhsu1213
+**PR author** : @boanhsu1213 \
+**Led by:** @gdpps1028
 
 ## 2026-11-21 小組討論結果
 
@@ -55,7 +64,8 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Outcome**：approved \
 **What the mainly change/improve** : 完整版 MVP 功能串接、修關於 System Prompt 的穩定性問題 \
 **More comment** : should use PR templatement and avoid plug in too much infomation in a same \  
-**Led by:** @boanhsu1213
+**PR author** : @boanhsu1213 \
+**Led by:** @TTT426
 
 ## 2026-11-21 — Connect tools from the browser; separate seed repo (proposal, pending team confirmation)
 
@@ -78,15 +88,15 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What the mainly change/improve** : Connect tools page (Discord), separate seed server \
 **Led by:** @gdpps1028 
 
-## 2026-11-22 — Code steward 審閱：PR #13
+## 2026-11-22 — Code steward reviews : PR #13
 
 **What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/13) \
 **Outcome:** approved \
 **What the mainly change/improve:** 
   1. Add more readable GUI interface 
   2. Connect GitHub from the browser 
-
-**Led by:** @gdpps1028
+**PR author** : @gdpps1028 \
+**Led by:** : @TTT426
 
 ## 2026-11-22 — Follow-up to the PR #11 steward review
 
@@ -97,18 +107,28 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 
 
 ## 2026-11-22 — Code steward reviews: PR #14 and PR #15
-**What:** At @hojinpongcs09-lab's request, Codex inspected both PRs, ran related tests on macOS, and submitted English substantive reviews with formal Approve under @hojinpongcs09-lab's account before merging. PR #14 (Notion) was merged first, then PR #15 (Discord), both into main rather than their old stacked base branches.
-**Outcome:** Approved and merged. Notion: 33 related tests passed; Discord: 41 related tests passed; Ruff passed for both. DECISIONS.md conflicts were resolved by preserving both branches' records; no application code was changed during conflict resolution.
-**Review comments:** Verified token validation and exclusion from responses, seed/real workspace separation, and Discord server membership checks and read-only invite permissions. Suggested additional import success and ConnectorError rollback/502 tests as non-blocking follow-up. Real-account validation was not repeated by this reviewer; Discord thread imports remain unverified.
-**Evidence:** [PR #14](https://github.com/TTT426/Group16/pull/14), merge a51518f; [PR #15](https://github.com/TTT426/Group16/pull/15), merge 5d39fe8. Formal reviews and comments are recorded in GitHub.
+**What:** At @hojinpongcs09-lab's request, Codex inspected both PRs, ran related tests on macOS, and submitted English substantive reviews with formal Approve under @hojinpongcs09-lab's account before merging. PR #14 (Notion) was merged first, then PR #15 (Discord), both into main rather than their old stacked base branches. \
+**Outcome:** Approved and merged. Notion: 33 related tests passed; Discord: 41 related tests passed; Ruff passed for both. DECISIONS.md conflicts were resolved by preserving both branches' records; no application code was changed during conflict resolution. \
+**Review comments:** Verified token validation and exclusion from responses, seed/real workspace separation, and Discord server membership checks and read-only invite permissions. Suggested additional import success and ConnectorError rollback/502 tests as non-blocking follow-up. Real-account validation was not repeated by this reviewer; Discord thread imports remain unverified. \
+**Evidence:** [PR #14](https://github.com/TTT426/Group16/pull/14), merge a51518f; [PR #15](https://github.com/TTT426/Group16/pull/15), merge 5d39fe8. Formal reviews and comments are recorded in GitHub. \
+**PR author** : @gdpps1028 \
 **Led by:** @hojinpongcs09-lab (AI-assisted; authorized review and merge).
 
 ## 2026-11-22 — Sync PR #12 after Notion and Discord merges
-**What:** Updated the original [PR #12](https://github.com/TTT426/Group16/pull/12) branch hjp-macos-setup with main at 5d39fe8. Retained --dev installation, minimal-mode compatibility, install-stamp behavior and fallback preserving development tools, alongside the new Notion and Discord connection flows.
-**Why:** Keep the macOS development setup compatible with the current product without replacing teammates' connection features.
-**Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation.
-**Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md.
+**What:** Updated the original [PR #12](https://github.com/TTT426/Group16/pull/12) branch hjp-macos-setup with main at 5d39fe8. Retained --dev installation, minimal-mode compatibility, install-stamp behavior and fallback preserving development tools, alongside the new Notion and Discord connection flows. \
+**Why:** Keep the macOS development setup compatible with the current product without replacing teammates' connection features. \
+**Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation. \
+**Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md. \
 **Led by:** @hojinpongcs09-lab (Codex-assisted).
+
+## 2026-11-22 — Code steward reviews: PR #12
+
+**What:** @boanhsu1213 以 code steward 身分審閱並合併 [#12](https://github.com/TTT426/Group16/pull/12)（merge 18b49a9） \
+**Outcome:** approved \
+**What the mainly change/improve:** `start.sh` / `start.bat` 加上 `--dev`，一次安裝 pytest、ruff 等開發工具，可與 `--minimal` 搭配 \
+**More comment:** 在乾淨環境（合併最新 main 6ea3a4f）測試：125 passed、1 skipped、1 failed。失敗的 `test_config_lists_modes_and_scenarios` 是 main 原本就有的 bug（見〈Follow-up to the PR #11 steward review〉，之後由 #19 修正），不是這個 PR 造成的；ruff 通過。Review 由 Claude Code 協助準備。 \
+**PR author** : @hojinpongcs09-lab \
+**Led by:** @boanhsu1213
 
 ## 2026-11-22 — Choose the AI model on the web page (proposal, pending team confirmation)
 
@@ -116,3 +136,19 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Why:** Not every member (or user of the product) has a Claude subscription; API keys suit a shared setup, and Ollama runs free and fully local. The `LLMProvider` interface the team confirmed on 2026-11-21 already allowed switching, but only by editing `.env`, and only to the Claude CLI. \
 **What the mainly change/improve** : AI model choice on the Connect tools page and the ask page \
 **Led by:** @gdpps1028
+
+## 2026-11-22 — Code steward reviews: PR #19
+
+**What:** @boanhsu1213 以 code steward 身分審閱並合併 [#19](https://github.com/TTT426/Group16/pull/19)（merge fe0d32f） \
+**Outcome:** approved \
+**What the mainly change/improve:** `/api/config` 改用注入的 `get_session`，修正〈Follow-up to the PR #11 steward review〉記錄的乾淨環境測試失敗 \
+**More comment:** 乾淨環境（合併最新 main 18b49a9，`DATABASE_PATH` 指向不存在的檔案）：127 passed、1 skipped，沒有建立本機資料庫；把 `main.py` 換回修正前的版本時，新測試會失敗；ruff 通過。審閱紀錄沒有在 Approve 前放進 PR，所以在這裡補記。Review 由 Claude Code 協助準備。 \
+**PR author** : @hojinpongcs09-lab \
+**Led by:** @boanhsu1213
+
+## 2026-11-22 — PR 處理順序：先審閱、記錄，再合併（提案，待組內確認）
+
+**What:** 每個 PR 依這個順序進 main：1) 從最新 main 開 `<name>-<topic>` 分支，一個 PR 一個主題，不堆疊在還沒合併的分支上；2) 作者同步 main，在乾淨環境（新的 clone 或 worktree，不沿用本機資料庫）跑 pytest + ruff，揭露 AI 使用並加 `docs/prompts/` 紀錄；3) 由作者以外的組員擔任 code steward，看過所有改動的檔案、在乾淨環境重跑測試，並送出正式 GitHub review（只留言不算）；4) AI 只能起草 review，核准與合併要 steward 針對該 PR 下指示；5) steward 審閱紀錄在最後 Approve 前 commit 進同一個 PR，寫成合併後的狀態；6) 先 Approve 再合併，沒有作者以外的人 Approve 就不合併；7) 所有改動（包含 DECISIONS.md）都不直接推 main；8) 同步用原本的 PR，不開重複 PR，關閉 PR 時留言說明原因。 \
+**Why:** 回顧 #9–#19：#9 沒有 review 就合併；#11 合併時沒有任何核准，review 都在合併之後；#12、#14、#15 都是 AI 準備的核准，並在一兩分鐘內就合併；steward 紀錄在合併後才直接推 main 或另開 PR 補；#16 是 #12 的重複 PR。main 有分支保護，必須透過 PR，所以合併後才補紀錄會多一輪審閱。 \
+**What the mainly change/improve** : 固定 PR 從開分支到合併的順序，讓審閱在合併前完成、紀錄跟著改動一起進 main \
+**Led by:** @boanhsu1213
