@@ -66,6 +66,12 @@ def saved(monkeypatch):
     return calls
 
 
+def test_page_and_local_only_guard():
+    client = TestClient(app)
+    assert 'id="step-bot"' in client.get("/connect/discord").text
+    assert client.get("/api/discord/status", headers={"host": "evil.example"}).status_code == 403
+
+
 def test_save_token_picks_the_only_server_and_never_echoes_the_token(monkeypatch, saved):
     def fake_check(token, client=None):
         if token != "good":

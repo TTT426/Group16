@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>連接 Discord｜專案脈絡查詢</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer">評估</a>
+      <a href="/connect" aria-current="page">連接工具</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="narrow">
+    <a class="back" href="/connect">← 連接工具</a>
+    <h1>連接 Discord</h1>
+    <ol class="steps" id="steps" aria-label="步驟">
+      <li>建立 bot</li>
+      <li>加入伺服器</li>
+      <li>匯入</li>
+    </ol>
+
+    <!-- ============================== Step 1: bot token ============================== -->
+    <section class="panel stack" id="step-bot" hidden>
+      <div>
+        <h2>建立一個 Discord bot</h2>
+        <p class="muted" style="margin:0">Bot 是 Discord 讓其他程式讀取訊息的方式。這裡只會讀取，不會發訊息或修改任何東西；token 只存在你這台電腦上。</p>
+      </div>
+      <p class="notice" id="team-note">整個團隊只需要<b>一個</b> bot。如果組員已經建立過，請他私下把 token 傳給你（不要貼在公開頻道），直接貼到下面第 4 步。</p>
+
+      <!-- already connected -->
+      <div class="choice" id="connected" hidden>
+        <div class="row"><div id="connected-who" style="flex:1"></div><button class="link-button" type="button" id="replace">換一個 bot</button></div>
+        <div class="row" style="margin-top:0.75rem"><button class="primary big" type="button" id="continue">繼續 →</button></div>
+      </div>
+
+      <!-- token saved but Message Content is off -->
+      <div class="choice" id="intent-off" hidden>
+        <h3>還差一步：開啟 Message Content Intent</h3>
+        <p class="muted small" style="margin:0 0 0.6rem">沒有開啟時，bot 讀得到頻道，但每則訊息的內容都是空的。到 Bot 頁面打開它並按 <b>Save Changes</b>，再回來這裡。</p>
+        <div class="row"><a class="button primary" id="intent-portal" target="_blank" rel="noopener">開啟 Bot 設定 ↗</a><button type="button" id="intent-recheck">重新檢查</button></div>
+      </div>
+
+      <div id="setup">
+        <div class="choice">
+          <h3>1. 建立 application</h3>
+          <div class="row" style="margin:0.4rem 0"><a class="button primary" href="https://discord.com/developers/applications" target="_blank" rel="noopener">開啟 Discord Developer Portal ↗</a></div>
+          <p class="muted small" style="margin:0">按右上角的 <b>New Application</b>，名稱填〈你的專案名稱〉（伺服器成員會看到這個名字），勾選同意條款後按 <b>Create</b>。</p>
+          <figure id="fig-app"></figure>
+        </div>
+        <div class="choice" style="margin-top:0.9rem">
+          <h3>2. 複製 bot token</h3>
+          <p class="muted small" style="margin:0">左側選 <b>Bot</b>，按 <b>Reset Token</b>（確認後），再按 <b>Copy</b>。Token 只會顯示一次，之後忘記了再 Reset 一次即可。</p>
+          <figure id="fig-token"></figure>
+        </div>
+        <div class="choice" style="margin-top:0.9rem">
+          <h3>3. 開啟 Message Content Intent</h3>
+          <p class="muted small" style="margin:0">同一個 Bot 頁面往下，在 <b>Privileged Gateway Intents</b> 打開 <b>Message Content Intent</b>，按 <b>Save Changes</b>。</p>
+          <figure id="fig-intent"></figure>
+        </div>
+        <div class="choice" style="margin-top:0.9rem">
+          <h3>4. 貼上 token</h3>
+          <div class="row" style="margin-top:0.4rem">
+            <input style="flex:1;min-width:0" type="password" id="token-input" placeholder="bot token" autocomplete="off" aria-label="Bot token">
+            <button class="primary" type="button" id="token-save">連線</button>
+          </div>
+        </div>
+      </div>
+      <p class="notice error" id="bot-error" hidden></p>
+    </section>
+
+    <!-- ============================== Step 2: server ============================== -->
+    <section class="panel stack" id="step-server" hidden>
+      <div>
+        <h2>把 bot 加入你們的伺服器</h2>
+        <p class="muted" style="margin:0">邀請需要伺服器的「管理伺服器」權限；沒有的話，請伺服器管理員幫忙打開下面的連結。Bot 只會要求「檢視頻道」和「讀取訊息紀錄」兩個權限。</p>
+      </div>
+      <div class="choice">
+        <div class="row" style="margin-bottom:0.4rem"><a class="button primary" id="invite" target="_blank" rel="noopener">邀請 bot 進伺服器 ↗</a></div>
+        <ol class="how">
+          <li>在 <b>Add to server</b> 選你們團隊的伺服器，按 <b>Continue</b>。</li>
+          <li>確認權限後按 <b>Authorize</b>。</li>
+        </ol>
+        <figure id="fig-invite"></figure>
+      </div>
+      <div>
+        <div class="row"><h3 style="flex:1;margin:0">Bot 已加入的伺服器</h3><button type="button" id="recheck">重新檢查</button></div>
+        <p class="muted small" style="margin:0.2rem 0 0.5rem">邀請完回到這個分頁，會自動重新檢查。選擇要匯入的伺服器：</p>
+        <div class="repo-list" id="guild-list" role="radiogroup" aria-label="伺服器"></div>
+      </div>
+      <p class="notice error" id="server-error" hidden></p>
+      <div class="actions">
+        <button type="button" id="server-back">← 上一步</button>
+        <button class="primary" type="button" id="server-next" disabled>下一步 →</button>
+      </div>
+    </section>
+
+    <!-- ============================== Step 3: import ============================== -->
+    <section class="panel" id="step-import" hidden>
+      <h2>匯入 <span id="import-server"></span></h2>
+      <p style="margin:0">會讀取 bot 看得到的頻道：</p>
+      <ul class="checks">
+        <li>每個討論串（含論壇貼文、已封存的討論串）各成為一份文件</li>
+        <li>一般頻道的訊息，依時間分段</li>
+        <li>發言者、時間和附件檔名</li>
+      </ul>
+      <p class="muted small">只會讀取，不會發訊息。Bot 看不到的頻道不會匯入。匯入的是現在的內容；之後有新訊息，到「連接工具」按「重新匯入」即可。</p>
+      <p class="notice" id="import-status" hidden></p>
+      <div class="actions" id="import-actions">
+        <button type="button" id="import-back">← 上一步</button>
+        <button class="primary big" type="button" id="import-start">開始匯入</button>
+      </div>
+      <div class="actions" id="done-actions" hidden>
+        <a class="button" href="/connect">回到連接工具</a>
+        <a class="button primary" href="/">開始查詢 →</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
+    import { $, post, waiting, note, busy, stepper, allStepsDone, frame } from "/static/connect-common.js?v=0.2.1";
+
+    let status = null;
+    const go = stepper(["bot", "server", "import"]);
+
+    /* ---------------------------------------------------------------- illustrations of Discord's pages */
+    const blurple = (x, y, w, label) => `<rect class="ill-discord" x="${x}" y="${y}" width="${w}" height="30" rx="5"/>
+      <text class="ill-white" x="${x + w / 2}" y="${y + 20}" text-anchor="middle" font-size="13">${label}</text>`;
+    function figApp() {
+      return frame("discord.com/developers/applications", `
+        <text class="ill-text" x="40" y="66" font-size="17" font-weight="700">Applications</text>
+        ${blurple(390, 48, 130, "New Application")}
+        <rect class="ill-ring" x="383" y="41" width="144" height="44" rx="9"/>
+        <rect class="ill-box" x="140" y="104" width="280" height="128" rx="8"/>
+        <text class="ill-text" x="160" y="132" font-size="14" font-weight="700">Create an application</text>
+        <text class="ill-muted" x="160" y="154" font-size="11">NAME</text>
+        <rect class="ill-frame" x="160" y="160" width="240" height="24" rx="4"/><text class="ill-text" x="170" y="177" font-size="12">〈你的專案名稱〉</text>
+        ${blurple(320, 194, 80, "Create")}`, "建立 application");
+    }
+    function figToken() {
+      return frame("discord.com/developers/applications/…/bot", `
+        <text class="ill-muted" x="30" y="62" font-size="12">General Information</text>
+        <text class="ill-muted" x="30" y="88" font-size="12">OAuth2</text>
+        <rect class="ill-box" x="22" y="100" width="120" height="24" rx="4"/><text class="ill-text" x="30" y="116" font-size="12" font-weight="700">Bot</text>
+        <text class="ill-text" x="180" y="66" font-size="13" font-weight="700">TOKEN</text>
+        <text class="ill-muted" x="180" y="88" font-size="12">For security purposes, tokens can only be viewed once.</text>
+        ${blurple(180, 104, 110, "Reset Token")}
+        <rect class="ill-ring" x="173" y="97" width="124" height="44" rx="9"/>
+        <rect class="ill-box" x="180" y="160" width="250" height="30" rx="5"/><text class="ill-text" x="192" y="180" font-size="12">MTIzNDU2Nzg5…</text>
+        ${blurple(440, 160, 70, "Copy")}
+        <text class="ill-note" x="344" y="216" text-anchor="middle" font-size="13">先 Reset Token，再按 Copy</text>`, "在 Bot 頁面重設並複製 token");
+    }
+    function figIntent() {
+      const row = (y, name, on) => `<text class="ill-text" x="60" y="${y}" font-size="13" font-weight="600">${name}</text>
+        <rect class="${on ? "ill-green" : "ill-dot"}" x="440" y="${y - 14}" width="40" height="20" rx="10"/>
+        <circle class="ill-frame" cx="${on ? 470 : 450}" cy="${y - 4}" r="7"/>`;
+      return frame("discord.com/developers/applications/…/bot", `
+        <text class="ill-text" x="60" y="64" font-size="14" font-weight="700">Privileged Gateway Intents</text>
+        ${row(100, "Presence Intent", false)}
+        ${row(136, "Server Members Intent", false)}
+        ${row(172, "Message Content Intent", true)}
+        <rect class="ill-ring" x="50" y="148" width="446" height="36" rx="8"/>
+        ${blurple(400, 202, 110, "Save Changes")}
+        <text class="ill-note" x="390" y="222" text-anchor="end" font-size="13">打開這一項後按 Save Changes →</text>`, "開啟 Message Content Intent");
+    }
+    function figInvite() {
+      return frame("discord.com/oauth2/authorize?client_id=…", `
+        <text class="ill-text" x="280" y="62" text-anchor="middle" font-size="15" font-weight="700">〈你的 bot 名稱〉</text>
+        <text class="ill-muted" x="280" y="82" text-anchor="middle" font-size="12">wants to access your Discord account</text>
+        <text class="ill-muted" x="140" y="105" font-size="11">ADD TO SERVER:</text>
+        <rect class="ill-box" x="140" y="120" width="280" height="30" rx="5"/><text class="ill-text" x="152" y="140" font-size="13">你們團隊的伺服器 ▾</text>
+        <rect class="ill-ring" x="133" y="113" width="294" height="44" rx="9"/>
+        <text class="ill-muted" x="140" y="190" font-size="12">Cancel</text>
+        ${blurple(330, 172, 90, "Continue")}
+        <text class="ill-note" x="280" y="230" text-anchor="middle" font-size="13">選伺服器 → Continue → 下一頁按 Authorize</text>`, "選擇要加入的伺服器並授權");
+    }
+    $("fig-app").innerHTML = figApp();
+    $("fig-token").innerHTML = figToken();
+    $("fig-intent").innerHTML = figIntent();
+    $("fig-invite").innerHTML = figInvite();
+
+    /* ---------------------------------------------------------------- state */
+    const guildName = () => {
+      const g = status && status.check && status.check.guilds.find((x) => x.id === status.guild_id);
+      return g ? g.name : "";
+    };
+    function render(s) {
+      status = s;
+      const c = s.check;
+      const ok = !!(s.connected && c);
+      $("connected").hidden = !(ok && c.message_content);
+      $("intent-off").hidden = !(ok && !c.message_content);
+      $("setup").hidden = ok;
+      $("team-note").hidden = ok;
+      if (ok) {
+        $("connected-who").replaceChildren(h("b", {}, c.bot), h("div", { class: "muted small" }, "已連接，Message Content Intent 已開啟"));
+        $("intent-portal").href = c.portal_url;
+        $("invite").href = c.invite_url;
+      }
+      note("bot-error", s.error || "", s.error ? "error" : "");
+      const guilds = (c && c.guilds) || [];
+      $("guild-list").replaceChildren(...(guilds.length ? guilds.map((g) => {
+        const radio = h("input", { type: "radio", name: "guild", value: g.id, checked: g.id === s.guild_id });
+        radio.addEventListener("change", () => chooseGuild(g.id));
+        return h("label", { class: "repo-option" }, radio, h("span", { class: "name" }, g.name));
+      }) : [h("p", { class: "repo-option muted" }, "Bot 還沒加入任何伺服器。請按上面的「邀請 bot 進伺服器」。")]));
+      $("server-next").disabled = !guildName();
+    }
+    async function refresh() { render(await api("/api/discord/status")); }
+    async function chooseGuild(id) {
+      try { render(await post("/api/discord/guild", { guild_id: id })); note("server-error", ""); }
+      catch (err) { note("server-error", err.message, "error"); }
+    }
+
+    $("token-save").addEventListener("click", (e) => busy(e.target, async () => {
+      try {
+        render(await post("/api/discord/token", { token: $("token-input").value }));
+        $("token-input").value = "";
+        if (status.check.message_content) go("server");  // otherwise stay: the intent box shows what is left
+      } catch (err) { note("bot-error", err.message, "error"); }
+    }));
+    $("continue").addEventListener("click", () => go("server"));
+    $("replace").addEventListener("click", (e) => busy(e.target, async () => { await post("/api/discord/disconnect"); await refresh(); }));
+    $("intent-recheck").addEventListener("click", (e) => busy(e.target, async () => {
+      await refresh();
+      if (status.check && status.check.message_content) go("server");
+    }));
+
+    $("recheck").addEventListener("click", (e) => busy(e.target, async () => {
+      try { await refresh(); note("server-error", ""); } catch (err) { note("server-error", err.message, "error"); }
+    }));
+    // Coming back from the Discord tab (intent switched on, bot invited): check again automatically.
+    window.addEventListener("focus", () => {
+      if (!$("step-server").hidden || !$("intent-off").hidden) refresh().catch(() => {});
+    });
+    $("server-back").addEventListener("click", () => go("bot"));
+    $("server-next").addEventListener("click", () => { $("import-server").textContent = guildName(); go("import"); });
+
+    $("import-back").addEventListener("click", () => go("server"));
+    $("import-start").addEventListener("click", (e) => busy(e.target, async () => {
+      $("import-back").disabled = true;
+      note("import-status", waiting("匯入中… 訊息越多越久。請不要關閉這個頁面。"), "ok");
+      try {
+        const r = await post("/api/discord/import");
+        note("import-status", `完成！讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落），現在可以查詢了。`, "ok");
+        $("import-actions").hidden = true;
+        $("done-actions").hidden = false;
+        allStepsDone();
+        loadStatus($("status"));
+      } catch (err) { note("import-status", err.message, "error"); }
+      finally { $("import-back").disabled = false; }
+    }));
+
+    loadStatus($("status"));
+    refresh()
+      // Bot ready but not in a chosen server yet: that is the step left to do. Otherwise start at the beginning.
+      .then(() => go(status.check && status.check.message_content && !guildName() ? "server" : "bot"))
+      .catch((err) => { go("bot"); note("bot-error", err.message, "error"); });
+  </script>
+</body>
+</html>

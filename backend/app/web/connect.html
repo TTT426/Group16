@@ -40,9 +40,12 @@
       <div class="row" id="notion-actions"></div>
     </section>
 
-    <section class="panel tool-card soon" data-tool="discord">
-      <header><h2>Discord</h2><span class="chip">即將推出</span></header>
-      <p class="what">頻道訊息與討論串</p>
+    <section class="panel tool-card" data-tool="discord">
+      <header><h2>Discord</h2><span class="chip" id="discord-chip">讀取中…</span></header>
+      <p class="what">伺服器裡的頻道訊息與討論串</p>
+      <dl class="facts" id="discord-facts" hidden></dl>
+      <p class="notice" id="discord-msg" hidden></p>
+      <div class="row" id="discord-actions"></div>
     </section>
   </main>
 
@@ -146,9 +149,37 @@
         disconnectButton("notion", "中斷與 Notion 的連接？", renderNotion));
     }
 
+    // ---- Discord ----
+    async function renderDiscord() {
+      let s;
+      try { s = await api("/api/discord/status"); }
+      catch (e) { chip("discord", "讀取失敗"); return message("discord", e.message, "error"); }
+      if (!s.connected) {
+        chip("discord", "尚未連接"); facts("discord", []); message("discord", "");
+        return actions("discord", connectButton("discord", "連接 Discord →"));
+      }
+      const c = s.check;
+      const server = c && c.guilds.find((g) => g.id === s.guild_id);
+      const ready = !!(server && c.message_content);
+      chip("discord", !ready ? "未完成" : s.documents ? "已連接" : "尚未匯入", ready && s.documents ? "done" : "warn");
+      facts("discord", [
+        ["Bot", c ? c.bot : "—"],
+        ["伺服器", server ? server.name : "尚未選擇"],
+        ["已匯入", `${s.documents} 份文件`],
+      ]);
+      message("discord", s.error ? `${s.error}請按「更改設定」重新設定。`
+        : c && !c.message_content ? "還沒開啟 Message Content Intent，bot 會讀不到訊息內容。請按「更改設定」。"
+        : !server ? "Bot 還沒加入你們的伺服器，請按「更改設定」邀請它。" : "");
+      actions("discord",
+        ready ? importButton("discord", s.documents > 0, "匯入中… 訊息越多越久。", renderDiscord) : null,
+        settingsButton("discord"),
+        disconnectButton("discord", "中斷與 Discord 的連接？", renderDiscord));
+    }
+
     loadStatus($("status"));
     renderGitHub();
     renderNotion();
+    renderDiscord();
   </script>
 </body>
 </html>
