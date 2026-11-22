@@ -2,7 +2,7 @@
 
 Examples:
   python scripts/ingest.py github notion discord          # real tools (tokens in .env)
-  python scripts/ingest.py --seed-repo github             # GitHub from SEED_GITHUB_REPO (the evaluation workspace)
+  python scripts/ingest.py --seed-workspace github notion # the seeded evaluation workspace (SEED_* settings)
   python scripts/ingest.py --scenario scripts/seed_workspace/scenario_*.yaml   # offline simulated workspace
   python scripts/ingest.py --init-db --if-empty --scenario ...   # first run only (used by start.bat)
 """
@@ -18,12 +18,14 @@ from sqlalchemy import func, select
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app.config import get_settings  # noqa: E402
+from app.connectors.base import ConnectorError  # noqa: E402
 from app.connectors.factory import SOURCES, build_connector  # noqa: E402
 from app.connectors.scenario import ScenarioConnector  # noqa: E402
 from app.db.models import Document  # noqa: E402
 from app.db.session import delete_db_file, get_session_factory, init_db  # noqa: E402
 from app.embeddings.factory import get_embedder  # noqa: E402
 from app.ingest.pipeline import ingest_documents, reembed_stale  # noqa: E402
+from app.seeding import seed_workspace_settings  # noqa: E402
 
 
 def main() -> None:
@@ -32,8 +34,8 @@ def main() -> None:
     parser.add_argument("--scenario", nargs="+", default=[], help="scenario YAML files (globs allowed)")
     parser.add_argument("--init-db", action="store_true", help="create tables first (safe to repeat)")
     parser.add_argument("--reset", action="store_true", help="delete the SQLite database file first")
-    parser.add_argument("--seed-repo", action="store_true",
-                        help="read GitHub from SEED_GITHUB_REPO (the seeded evaluation workspace), not GITHUB_REPO")
+    parser.add_argument("--seed-workspace", action="store_true",
+                        help="read the seeded evaluation workspace (SEED_* settings) instead of the team's tools")
     parser.add_argument("--if-empty", action="store_true",
                         help="skip if documents already exist (only re-embed chunks made with another model)")
     args = parser.parse_args()
@@ -41,10 +43,11 @@ def main() -> None:
         parser.error("give at least one source or --scenario")
 
     settings, embedder = get_settings(), get_embedder()
-    if args.seed_repo:
-        if not settings.seed_github_repo:
-            parser.error("--seed-repo needs SEED_GITHUB_REPO in .env")
-        settings = settings.model_copy(update={"github_repo": settings.seed_github_repo})
+    if args.seed_workspace:
+        try:
+            settings = seed_workspace_settings(settings, args.sources)
+        except ConnectorError as exc:
+            parser.error(str(exc))
     if args.reset:
         delete_db_file(settings.db_file)
         print(f"Deleted {settings.db_file}")

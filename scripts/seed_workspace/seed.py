@@ -7,7 +7,7 @@ Needs in .env: SEED_GITHUB_REPO (an empty test repo, never GITHUB_REPO) + a GitH
 GITHUB_TOKEN); SEED_NOTION_TOKEN (a separate connection, never NOTION_TOKEN) + NOTION_PARENT_PAGE_ID
 (a page shared with the integration), DISCORD_BOT_TOKEN + DISCORD_GUILD_ID (bot with Manage Channels,
 Create Public Threads and Manage Webhooks). Progress is kept in data/seed_state.json; delete it to seed again.
-Afterwards index the seeded tools:  python scripts/ingest.py --reset --seed-repo github notion discord
+Afterwards index the seeded tools:  python scripts/ingest.py --reset --seed-workspace github notion discord
 """
 
 import argparse
