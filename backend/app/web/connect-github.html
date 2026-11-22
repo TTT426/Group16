@@ -141,44 +141,12 @@
 
   <script type="module">
     import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
-
-    const $ = (id) => document.getElementById(id);
-    const post = (path, body) => api(path, { method: "POST", body: body || {} });
-    const waiting = (text) => h("span", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), text);
-
-    function note(id, content, kind) {
-      const el = $(id);
-      if (kind !== undefined) el.className = "notice " + kind;
-      el.hidden = !content;
-      el.replaceChildren(...(content ? [content] : []));
-    }
-    async function busy(button, fn) { button.disabled = true; try { await fn(); } finally { button.disabled = false; } }
+    import { $, post, waiting, note, busy, stepper, allStepsDone, esc, frame } from "/static/connect-common.js?v=0.2.1";
 
     let account = null;
-
-    /* ---------------------------------------------------------------- steps */
-    const ORDER = ["login", "repo", "import"];
-    function go(step) {
-      const i = ORDER.indexOf(step);
-      ORDER.forEach((s) => ($("step-" + s).hidden = s !== step));
-      [...$("steps").children].forEach((li, j) => {
-        li.className = j < i ? "done" : "";
-        if (j === i) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
-      });
-      if (step === "repo") loadRepos();
-      window.scrollTo({ top: 0 });
-    }
+    const go = stepper(["login", "repo", "import"], (step) => { if (step === "repo") loadRepos(); });
 
     /* ---------------------------------------------------------------- illustrations of GitHub's pages */
-    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-    function frame(url, inner, label) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 250" role="img" aria-label="${label}">
-        <rect class="ill-frame" x="1" y="1" width="558" height="248" rx="10"/>
-        <rect class="ill-bar" x="1.5" y="1.5" width="557" height="30" rx="9"/>
-        <circle class="ill-dot" cx="18" cy="16" r="5"/><circle class="ill-dot" cx="34" cy="16" r="5"/><circle class="ill-dot" cx="50" cy="16" r="5"/>
-        ${url ? `<rect class="ill-box" x="70" y="9" width="300" height="15" rx="7"/><text class="ill-muted" x="80" y="20.5" font-size="10">${url}</text>` : ""}
-        ${inner}</svg><figcaption>示意圖：${label}（實際畫面可能略有不同）</figcaption>`;
-    }
     function figDevice(code) {
       const chars = code.replace("-", "").padEnd(8, " ").slice(0, 8).split("");
       const boxes = chars.map((c, i) => {
@@ -348,7 +316,7 @@
         note("import-status", `完成！讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落），現在可以查詢了。`, "ok");
         $("import-actions").hidden = true;
         $("done-actions").hidden = false;
-        [...$("steps").children].forEach((li) => { li.className = "done"; li.removeAttribute("aria-current"); });
+        allStepsDone();
         loadStatus($("status"));
       } catch (err) { note("import-status", err.message, "error"); }
       finally { $("import-back").disabled = false; }
