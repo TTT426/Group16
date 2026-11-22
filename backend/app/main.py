@@ -15,11 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .api import ask, connect_discord, connect_notion, decisions, evaluation, hub, ingest, search
+from .api import ask, connect_discord, connect_llm, connect_notion, decisions, evaluation, hub, ingest, search
 from .config import REPO_ROOT, get_settings
 from .db.models import Document
 from .db.session import get_session, init_db
 from .embeddings.factory import get_embedder
+from .llm import catalog as llm_catalog
 from .qa.service import MODES
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -38,9 +39,10 @@ app.include_router(ask.router)
 app.include_router(ingest.router)
 app.include_router(evaluation.router)
 app.include_router(decisions.router)
-app.include_router(hub.router)  # /connect: connect GitHub / Notion / Discord and import
+app.include_router(hub.router)  # /connect: connect GitHub / Notion / Discord and import, choose the AI model
 app.include_router(connect_notion.router)
 app.include_router(connect_discord.router)
+app.include_router(connect_llm.router)
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
@@ -78,9 +80,12 @@ def config(session: Annotated[Session, Depends(get_session)]) -> dict:
     for path in sorted(SCENARIO_DIR.glob("scenario_*.yaml")):
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         scenarios.append({"id": data["id"], "task": data["task"].strip()})
+    llm = llm_catalog.current(settings)
     return {
         "llm_provider": settings.llm_provider,
-        "llm_model": settings.llm_model or "(CLI default)",
+        "llm_model": settings.llm_model or "(default)",
+        "llm_label": llm["label"],
+        "llm_problem": llm["problem"],  # the chosen provider is not set up (see llm/catalog.setup_problem)
         "qa_mode": settings.qa_mode,
         "qa_modes": list(MODES),
         "embedding_model": get_embedder().model_id,

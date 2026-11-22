@@ -41,7 +41,7 @@ async def ask(
     try:
         result = await service.answer(body.question.strip(), body.mode)
     except LLMError as exc:
-        raise HTTPException(503, f"無法使用 Claude CLI：{exc}") from exc
+        raise HTTPException(503, f"無法使用 AI 模型（{provider.name}）：{exc}") from exc
     except QAError as exc:
         raise HTTPException(502, str(exc)) from exc
 

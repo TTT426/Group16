@@ -1,7 +1,8 @@
 """Provider-neutral LLM interface.
 
-Every part of the app talks to the model through `LLMProvider`. The project uses the
-Claude Code CLI (`claude_cli`); `fake` replaces it in tests and offline development.
+Every part of the app talks to the model through `LLMProvider`. Providers: the Claude Code CLI
+(`claude_cli`, the default), the Anthropic API (`anthropic_api`), OpenAI or an OpenAI-compatible API
+(`openai_api`) and a local Ollama server (`ollama`); `fake` replaces them in tests and offline development.
 """
 
 from pathlib import Path
@@ -20,12 +21,22 @@ class LLMResult(BaseModel):
 
 
 class LLMError(RuntimeError):
-    """Raised when a provider fails to produce a usable answer."""
+    """Raised when a provider fails to produce a usable answer.
+
+    `retryable=False` marks errors that asking again will not fix (bad key, missing model, server not
+    running, timeout), so callers don't spend a second call on them.
+    """
+
+    def __init__(self, message: str, *, retryable: bool = True) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 @runtime_checkable
 class LLMProvider(Protocol):
     name: str
+    # True if the provider can search a `workspace` folder itself (needed by the agent QA mode).
+    supports_workspace: bool
 
     async def generate(
         self, system: str, user: str, *, max_tokens: int = 4000, workspace: Path | None = None,
@@ -33,7 +44,8 @@ class LLMProvider(Protocol):
     ) -> LLMResult:
         """Return the model's text reply to a single-turn prompt.
 
-        With `workspace`, the model may search and read the files in that folder (read-only) before answering.
+        With `workspace` (only if `supports_workspace`), the model may search and read the files in that
+        folder (read-only) before answering.
         With `json_schema`, the reply text is a JSON object that matches the schema.
         """
         ...

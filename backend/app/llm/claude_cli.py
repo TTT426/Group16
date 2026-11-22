@@ -26,9 +26,13 @@ from pathlib import Path
 
 from .base import LLMError, LLMResult
 
+MSG_NOT_FOUND = ("找不到 Claude Code。請先安裝 Claude Code 並在終端機執行一次 claude 登入，"
+                 "或在「連接工具」改用其他 AI 模型。")
+
 
 class ClaudeCLIProvider:
     name = "claude_cli"
+    supports_workspace = True
 
     def __init__(
         self,
@@ -101,9 +105,7 @@ class ClaudeCLIProvider:
                 env=self.build_env(),
             )
         except FileNotFoundError as exc:
-            raise LLMError(
-                f"Claude CLI not found ({self.executable!r}). Install Claude Code and run `claude` once to log in."
-            ) from exc
+            raise LLMError(MSG_NOT_FOUND, retryable=False) from exc
         try:
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(stdin_text.encode("utf-8")), timeout=self.timeout_s
@@ -111,7 +113,7 @@ class ClaudeCLIProvider:
         except TimeoutError as exc:
             proc.kill()
             await proc.wait()
-            raise LLMError(f"Claude CLI timed out after {self.timeout_s}s") from exc
+            raise LLMError(f"Claude Code 超過 {self.timeout_s:.0f} 秒沒有回應。", retryable=False) from exc
         return stdout, stderr, proc.returncode
 
     def parse_output(self, stdout: bytes, stderr: bytes, returncode: int, latency_ms: int) -> LLMResult:

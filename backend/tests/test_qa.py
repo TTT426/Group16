@@ -86,6 +86,14 @@ async def test_agent_mode_searches_exported_workspace(db_session, embedder, inge
     assert result.dropped_citations == ["discord/missing.md"]
 
 
+async def test_agent_mode_falls_back_to_rag_without_workspace_support(db_session, embedder, ingested, tmp_path):
+    provider = FakeProvider(cite_first_two)
+    provider.supports_workspace = False  # like the API and Ollama providers
+    result = await make_service(db_session, embedder, provider, tmp_path).answer("付款失敗的原因", "agent")
+    assert result.mode == "rag" and provider.workspaces == [None]
+    assert any("agent 模式只支援 Claude Code" in w for w in result.warnings)
+
+
 async def test_invalid_json_is_retried_once_then_fails(db_session, embedder, ingested, tmp_path):
     replies = iter(["not json", json.dumps({"sections": [{"text": "ok", "sources": ["S1"]}]})])
     provider = FakeProvider(lambda s, u: next(replies))
@@ -172,3 +180,17 @@ async def test_transient_cli_error_is_retried_once(db_session, embedder, ingeste
     assert result.llm_calls == 2 and result.sections
     with pytest.raises(LLMError):
         await make_service(db_session, embedder, Flaky(2), tmp_path).answer("付款", "rag")
+
+
+async def test_errors_that_cannot_fix_themselves_are_not_retried(db_session, embedder, ingested, tmp_path):
+    from app.llm.base import LLMError
+
+    class BadKey(FakeProvider):
+        async def generate(self, *args, **kwargs):
+            self.calls.append(args)
+            raise LLMError("API key 無效", retryable=False)
+
+    provider = BadKey()
+    with pytest.raises(LLMError, match="API key 無效"):
+        await make_service(db_session, embedder, provider, tmp_path).answer("付款", "rag")
+    assert len(provider.calls) == 1

@@ -109,3 +109,10 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Validation:** Apple Silicon macOS / Python 3.14: EMBEDDING_PROVIDER=hashing pytest: 126 passed, 1 skipped (opt-in real embedding test not enabled); Ruff and git diff --check passed. Existing environment/database were reused; this is not a clean-machine or real-account validation.
 **Status:** Proposed update in PR #12; not yet merged. Detailed update log: docs/updates/2026-11-22-pr12-sync.md.
 **Led by:** @hojinpongcs09-lab (Codex-assisted).
+
+## 2026-11-22 — Choose the AI model on the web page (proposal, pending team confirmation)
+
+**What:** The AI model that writes answers can be chosen in the browser: an "AI model" section below the tools on `/connect`, a setup page `/connect/llm`, and a model picker on the ask page (locked during evaluation sessions). Providers: Claude Code (still the default), Anthropic API, OpenAI or an OpenAI-compatible server, and Ollama for local models. The page saves `LLM_PROVIDER` / `LLM_MODEL` and the API keys to `.env`, under the same rules as the tool tokens. `agent` mode stays Claude Code only; other providers answer `agent` questions in `rag` mode with a notice. If no model is set up, every page warns right away; errors that need a real call (bad key, server down, timeout) appear when a question is asked, and there is no automatic switch to another provider. This replaces the pending part of the #11 proposal that limited the LLM to the Claude CLI. \
+**Why:** Not every member (or user of the product) has a Claude subscription; API keys suit a shared setup, and Ollama runs free and fully local. The `LLMProvider` interface the team confirmed on 2026-11-21 already allowed switching, but only by editing `.env`, and only to the Claude CLI. \
+**What the mainly change/improve** : AI model choice on the Connect tools page and the ask page \
+**Led by:** @gdpps1028

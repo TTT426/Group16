@@ -48,11 +48,18 @@ export function formatDuration(seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export async function loadStatus(target) {
+// Top-right status: document count, the AI model in use (or a warning if none is set up), and a button to
+// switch it (not on the model page itself, and not when `canSwitch` is false, e.g. during an evaluation session).
+export async function loadStatus(target, { canSwitch = true } = {}) {
   try {
     const config = await api("/api/config");
     const docs = Object.values(config.documents).reduce((a, b) => a + b, 0);
-    target.textContent = `${docs} 份資料｜LLM：${config.llm_provider}`;
+    const switchable = canSwitch && location.pathname !== "/connect/llm";
+    const model = config.llm_problem
+      ? h("span", { class: "status-warn", title: config.llm_problem }, "AI 模型尚未設定")
+      : `AI：${config.llm_label || config.llm_provider}`;
+    target.replaceChildren(`${docs} 份資料｜`, model, !switchable ? ""
+      : h("a", { class: "status-switch", href: "/connect/llm", title: "更換回答用的 AI 模型" }, config.llm_problem ? "設定" : "更換"));
     return config;
   } catch {
     target.textContent = "無法連線到伺服器";

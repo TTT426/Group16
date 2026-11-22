@@ -1,7 +1,8 @@
 """Prompts for question answering and decision drafting.
 
-The reply format is enforced with a JSON schema (Claude CLI `--json-schema`); the format is also described
-in the prompt, and replies are parsed with llm/json_utils.extract_json_object as a fallback.
+The reply format is enforced with a JSON schema (Claude CLI `--json-schema`, structured outputs on the APIs,
+Ollama `format`); the format is also described in the prompt, and replies are parsed with
+llm/json_utils.extract_json_object as a fallback.
 """
 
 ANSWER_SCHEMA = {

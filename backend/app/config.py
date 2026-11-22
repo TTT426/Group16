@@ -17,13 +17,19 @@ class Settings(BaseSettings):
     # SQLite database file (built into Python, no database server). Relative paths are relative to the repo root.
     database_path: Path = DEFAULT_DB_PATH
 
-    # LLM: claude_cli (Claude Code CLI, subscription) | fake (tests / offline development only)
+    # LLM, chosen on /connect/llm: claude_cli (Claude Code CLI, subscription; default) | anthropic_api |
+    # openai_api (OpenAI or an OpenAI-compatible server) | ollama (local models) | fake (tests / offline only)
     llm_provider: str = "claude_cli"
-    llm_model: str = ""  # empty -> the CLI's current default model
+    llm_model: str = ""  # empty -> the provider's default (claude_cli: the CLI's current default model)
     llm_timeout_s: float = 180.0
     llm_max_concurrency: int = 2
     claude_cli_path: str = "claude"
     claude_cli_strip_api_key: bool = True
+    anthropic_api_key: str = ""  # anthropic_api only; never passed to the Claude CLI (see claude_cli_strip_api_key)
+    openai_api_key: str = ""
+    openai_base_url: str = ""  # empty -> https://api.openai.com/v1; or an OpenAI-compatible server's /v1 URL
+    ollama_base_url: str = ""  # empty -> http://localhost:11434
+    ollama_num_ctx: int = 16384  # context window in tokens; Ollama's own default silently cuts long prompts
 
     # AI question answering: rag | full | agent (see qa/service.py and docs/EVAL_MODES.md)
     qa_mode: str = "rag"
@@ -59,7 +65,7 @@ class Settings(BaseSettings):
     @field_validator("llm_provider")
     @classmethod
     def _legacy_llm_provider(cls, value: str) -> str:
-        # .env files created by earlier versions say LLM_PROVIDER=auto; the project now uses only the Claude CLI.
+        # .env files created by earlier versions say LLM_PROVIDER=auto, which meant the Claude CLI.
         return "claude_cli" if value.strip().lower() == "auto" else value
 
     @property

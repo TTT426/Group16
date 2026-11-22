@@ -3,26 +3,40 @@ import json
 import pytest
 
 from app.config import Settings
+from app.llm.anthropic_api import AnthropicAPIProvider
 from app.llm.base import LLMError, LLMProvider
 from app.llm.claude_cli import ClaudeCLIProvider
 from app.llm.factory import get_provider
 from app.llm.fake import FakeProvider
-from app.llm.json_utils import extract_json_object
+from app.llm.json_utils import extract_json_object, strict_schema
+from app.llm.ollama import OllamaProvider
+from app.llm.openai_api import OpenAIAPIProvider
 
 # ---------- factory ----------
 
-@pytest.mark.parametrize("name, cls", [("claude_cli", ClaudeCLIProvider), ("fake", FakeProvider)])
-def test_factory_builds_provider(name, cls):
+@pytest.mark.parametrize("name, cls, workspace", [
+    ("claude_cli", ClaudeCLIProvider, True), ("anthropic_api", AnthropicAPIProvider, False),
+    ("openai_api", OpenAIAPIProvider, False), ("ollama", OllamaProvider, False), ("fake", FakeProvider, True)])
+def test_factory_builds_provider(name, cls, workspace):
     provider = get_provider(Settings(_env_file=None), name)
     assert isinstance(provider, cls)
     assert isinstance(provider, LLMProvider)
+    assert provider.supports_workspace is workspace
 
 
 def test_factory_defaults_to_claude_cli_and_rejects_others():
     assert isinstance(get_provider(Settings(_env_file=None)), ClaudeCLIProvider)
-    for name in ("anthropic_api", "ollama", "auto", "nope"):
+    for name in ("auto", "nope"):
         with pytest.raises(ValueError):
             get_provider(Settings(_env_file=None), name)
+
+
+def test_factory_uses_settings_or_explicit_model():
+    settings = Settings(_env_file=None, llm_provider="ollama", llm_model="qwen3:8b", ollama_num_ctx=8192)
+    assert get_provider(settings).model == "qwen3:8b"
+    assert get_provider(settings).num_ctx == 8192
+    assert get_provider(settings, "openai_api", "gpt-x").model == "gpt-x"
+    assert get_provider(Settings(_env_file=None), "anthropic_api").model == "claude-opus-5-5"  # default model
 
 
 # ---------- claude_cli ----------
@@ -128,8 +142,9 @@ async def test_cli_generate_uses_stdin(monkeypatch):
 
 async def test_cli_missing_executable():
     provider = ClaudeCLIProvider(executable="definitely-not-a-real-binary-xyz")
-    with pytest.raises(LLMError, match="not found"):
+    with pytest.raises(LLMError, match="找不到 Claude Code") as missing:
         await provider.generate("SYS", "hi")
+    assert missing.value.retryable is False
 
 
 # ---------- fake + json utils ----------
@@ -153,3 +168,15 @@ def test_extract_json_object(text):
 def test_extract_json_object_fails():
     with pytest.raises(ValueError):
         extract_json_object("no json here [1, 2]")
+
+
+def test_strict_schema_closes_every_object():
+    schema = {"type": "object", "properties": {
+        "items": {"type": "array", "items": {"type": "object", "properties": {"a": {"type": "string"}}}},
+        "b": {"type": "boolean"}}, "required": ["b"]}
+    strict = strict_schema(schema)
+    assert strict["additionalProperties"] is False and strict["required"] == ["items", "b"]
+    inner = strict["properties"]["items"]["items"]
+    assert inner == {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"],
+                     "additionalProperties": False}
+    assert "additionalProperties" not in schema  # the original is not modified

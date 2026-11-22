@@ -4,7 +4,8 @@
 - full  : every document goes into the prompt ("the whole project as memory"), one LLM call.
           Falls back to rag when the project is larger than QA_FULL_CONTEXT_CHARS.
 - agent : the project is exported as markdown files and Claude Code searches them itself with
-          its read-only Grep / Glob / Read tools before answering.
+          its read-only Grep / Glob / Read tools before answering. Only providers that can search a
+          folder (`supports_workspace`, i.e. the Claude CLI) can do this; others fall back to rag.
 
 In every mode the model must cite its sources; citations are checked against what it was given.
 """
@@ -77,6 +78,9 @@ class QAService:
         calls = 0
         latency = 0
 
+        if mode == "agent" and not getattr(self.provider, "supports_workspace", False):
+            warnings.append("目前選擇的 AI 模型不能自己搜尋檔案（agent 模式只支援 Claude Code），已改用 rag 模式。")
+            mode = "rag"
         if mode == "agent":
             root = self.workspace.sync(self.session)
             raw, calls, latency, provider, model = await self._ask_json(
@@ -118,7 +122,7 @@ class QAService:
                     json_schema=prompts.ANSWER_SCHEMA)
             except LLMError as exc:
                 calls += 1
-                if attempt or "not found" in str(exc):  # a missing CLI will not fix itself
+                if attempt or not exc.retryable:  # e.g. a bad key or a missing model will not fix itself
                     raise
                 continue
             calls += 1
