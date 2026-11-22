@@ -75,7 +75,7 @@
           <div class="choice" style="margin-top:0.6rem">
             <ol class="how">
               <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">開啟 GitHub 的「建立 token」頁面 ↗</a></li>
-              <li><b>Token name</b> 隨意填（例如 Group16），<b>Expiration</b> 選一個期限。</li>
+              <li><b>Token name</b> 填一個認得出來的名稱（例如〈你的專案名稱〉），<b>Expiration</b> 選一個期限。</li>
               <li><b>Repository access</b> 選「Only select repositories」，再選你要匯入的 repo。</li>
               <li>在 <b>Permissions → Repository permissions</b>，把下面三項設成 <b>Read-only</b>：</li>
             </ol>
@@ -197,7 +197,7 @@
     }
     function figAuthorize() {
       return frame("github.com/login/oauth/authorize", `
-        <text class="ill-text" x="280" y="70" text-anchor="middle" font-size="19" font-weight="700">Authorize Group16 Context Engine</text>
+        <text class="ill-text" x="280" y="70" text-anchor="middle" font-size="19" font-weight="700">Authorize 〈你的 App 名稱〉</text>
         <rect class="ill-line" x="150" y="92" width="260" height="8" rx="4"/><rect class="ill-line" x="180" y="110" width="200" height="8" rx="4"/>
         <rect class="ill-line" x="165" y="128" width="230" height="8" rx="4"/>
         <rect class="ill-box" x="120" y="170" width="120" height="38" rx="8"/><text class="ill-text" x="180" y="194" text-anchor="middle" font-size="14">Cancel</text>
