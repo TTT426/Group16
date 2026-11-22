@@ -153,6 +153,27 @@ def test_config_lists_modes_and_scenarios(client):
         "payment-failure", "duplicate-email"}
 
 
+def test_config_uses_injected_session_without_opening_local_database(client, db_session, tmp_path, monkeypatch):
+    from sqlalchemy import func, select
+
+    from app.db import session as db
+    from app.db.models import Document
+
+    local_db = tmp_path / "uninitialized-local.db"
+    monkeypatch.setattr(db, "get_settings", lambda: Settings(_env_file=None, database_path=local_db))
+    db.get_session_factory.cache_clear()
+    try:
+        response = client.get("/api/config")
+        assert response.status_code == 200
+        expected = dict(db_session.execute(
+            select(Document.source, func.count(Document.id)).group_by(Document.source)
+        ).all())
+        assert expected and response.json()["documents"] == expected
+        assert not local_db.exists()  # Config must use the same injected DB as the other endpoints.
+    finally:
+        db.get_session_factory.cache_clear()
+
+
 def test_add_missing_columns_upgrades_old_database(tmp_path):
     from sqlalchemy import text
 

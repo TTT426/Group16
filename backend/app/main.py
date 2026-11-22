@@ -6,17 +6,19 @@ Pages:  /  (ask / search)   /observer  (evaluation sessions)   /decisions  (deci
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 
 import yaml
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from .api import ask, connect_discord, connect_notion, decisions, evaluation, hub, ingest, search
 from .config import REPO_ROOT, get_settings
 from .db.models import Document
-from .db.session import get_session_factory, init_db
+from .db.session import get_session, init_db
 from .embeddings.factory import get_embedder
 from .qa.service import MODES
 
@@ -68,11 +70,10 @@ def health() -> dict:
 
 
 @app.get("/api/config")
-def config() -> dict:
+def config(session: Annotated[Session, Depends(get_session)]) -> dict:
     settings = get_settings()
-    with get_session_factory()() as session:
-        counts = session.execute(select(Document.source, func.count(Document.id)).group_by(Document.source))
-        documents = dict(counts.all())
+    counts = session.execute(select(Document.source, func.count(Document.id)).group_by(Document.source))
+    documents = dict(counts.all())
     scenarios = []
     for path in sorted(SCENARIO_DIR.glob("scenario_*.yaml")):
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
