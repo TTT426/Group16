@@ -80,6 +80,55 @@ def github_seed_target(settings: Settings) -> tuple[str, str]:
     return repo, token
 
 
+def notion_seed_target(settings: Settings) -> tuple[str, str]:
+    """(token, parent page id) to seed into: a separate connection, never the one the app imports with."""
+    token = settings.seed_notion_token.strip()
+    if not token:
+        raise ConnectorError("notion: set SEED_NOTION_TOKEN in .env to the API token of a separate connection for "
+                             "the test workspace. Every page the app's connection can see is imported.")
+    if token == settings.notion_token.strip():
+        raise ConnectorError("notion: SEED_NOTION_TOKEN is the same as NOTION_TOKEN, the connection the app imports "
+                             "with. Seeded pages would show up next to the team's real pages; use a separate one.")
+    if not settings.notion_parent_page_id.strip():
+        raise ConnectorError("notion: set NOTION_PARENT_PAGE_ID to a page shared with the seed connection.")
+    return token, settings.notion_parent_page_id.strip()
+
+
+def discord_seed_target(settings: Settings) -> tuple[str, str]:
+    """(bot token, server id) to seed into: a separate test server, never the one the app reads."""
+    guild_id = settings.seed_discord_guild_id.strip()
+    if not guild_id:
+        raise ConnectorError("discord: set SEED_DISCORD_GUILD_ID in .env to a separate test server. Seeding creates "
+                             "channels and threads and posts messages there.")
+    if guild_id == settings.discord_guild_id.strip():
+        raise ConnectorError("discord: SEED_DISCORD_GUILD_ID is the same as DISCORD_GUILD_ID, the team's server. "
+                             "Seeding would post fake threads into it, even into existing channels; "
+                             "use a separate test server.")
+    if not settings.discord_bot_token.strip():
+        raise ConnectorError("discord: no bot token. Connect Discord on the /connect page "
+                             "or set DISCORD_BOT_TOKEN.")
+    return settings.discord_bot_token.strip(), guild_id
+
+
+# Read setting -> seed setting, per source: what `ingest.py --seed-workspace` swaps in.
+SEED_SETTINGS = {
+    "github": ("github_repo", "seed_github_repo"),
+    "notion": ("notion_token", "seed_notion_token"),
+    "discord": ("discord_guild_id", "seed_discord_guild_id"),
+}
+
+
+def seed_workspace_settings(settings: Settings, sources: list[str]) -> Settings:
+    """Settings that read the seeded test workspace instead of the team's real tools, for the given sources."""
+    updates = {}
+    for source in sources:
+        read, seed = SEED_SETTINGS[source]
+        if not getattr(settings, seed):
+            raise ConnectorError(f"{source}: {seed.upper()} is not set, so there is no seeded workspace to read.")
+        updates[read] = getattr(settings, seed)
+    return settings.model_copy(update=updates)
+
+
 class GitHubSeeder(_Seeder):
     source = "github"
 

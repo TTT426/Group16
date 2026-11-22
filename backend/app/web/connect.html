@@ -24,22 +24,28 @@
 
     <p class="notice" id="first-time" hidden><b>第一步：</b>連接你們團隊的 GitHub repo，大約一分鐘。</p>
 
-    <section class="panel tool-card" data-tool="github" id="github">
-      <header><h2>GitHub</h2><span class="chip" id="gh-chip">讀取中…</span></header>
+    <section class="panel tool-card" data-tool="github">
+      <header><h2>GitHub</h2><span class="chip" id="github-chip">讀取中…</span></header>
       <p class="what">Issues、Pull requests（含留言與 code review）、repo 裡的 Markdown 文件</p>
-      <dl class="facts" id="gh-facts" hidden></dl>
-      <p class="notice" id="gh-msg" hidden></p>
-      <div class="row" id="gh-actions"></div>
+      <dl class="facts" id="github-facts" hidden></dl>
+      <p class="notice" id="github-msg" hidden></p>
+      <div class="row" id="github-actions"></div>
     </section>
 
-    <section class="panel tool-card soon" data-tool="notion">
-      <header><h2>Notion</h2><span class="chip">即將推出</span></header>
-      <p class="what">頁面與資料庫（規格、會議紀錄、決策）</p>
+    <section class="panel tool-card" data-tool="notion">
+      <header><h2>Notion</h2><span class="chip" id="notion-chip">讀取中…</span></header>
+      <p class="what">分享給 connection 的頁面（規格、會議紀錄、決策）</p>
+      <dl class="facts" id="notion-facts" hidden></dl>
+      <p class="notice" id="notion-msg" hidden></p>
+      <div class="row" id="notion-actions"></div>
     </section>
 
-    <section class="panel tool-card soon" data-tool="discord">
-      <header><h2>Discord</h2><span class="chip">即將推出</span></header>
-      <p class="what">頻道訊息與討論串</p>
+    <section class="panel tool-card" data-tool="discord">
+      <header><h2>Discord</h2><span class="chip" id="discord-chip">讀取中…</span></header>
+      <p class="what">伺服器裡的頻道訊息與討論串</p>
+      <dl class="facts" id="discord-facts" hidden></dl>
+      <p class="notice" id="discord-msg" hidden></p>
+      <div class="row" id="discord-actions"></div>
     </section>
   </main>
 
@@ -47,66 +53,133 @@
     import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
 
     const $ = (id) => document.getElementById(id);
-    const statusEl = $("status");
+    const waiting = (text) => h("span", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), text);
 
-    function message(content, kind = "") {
-      const el = $("gh-msg");
+    // ---- shared card helpers: every tool card has #<tool>-chip, -facts, -msg and -actions ----
+    function message(tool, content, kind = "") {
+      const el = $(`${tool}-msg`);
       el.className = "notice " + kind;
       el.hidden = !content;
       el.replaceChildren(...(content ? [content] : []));
     }
+    function chip(tool, text, kind = "") { const el = $(`${tool}-chip`); el.className = "chip " + kind; el.textContent = text; }
+    function facts(tool, rows) {
+      const el = $(`${tool}-facts`);
+      el.hidden = !rows.length;
+      el.replaceChildren(...rows.flatMap(([label, value]) => [h("dt", {}, label), h("dd", {}, value)]));
+    }
+    function actions(tool, ...buttons) { $(`${tool}-actions`).replaceChildren(...buttons.filter(Boolean)); }
+    function connectButton(tool, label) { return h("a", { class: "button primary", href: `/connect/${tool}` }, label); }
+    function settingsButton(tool) { return h("a", { class: "button", href: `/connect/${tool}` }, "更改設定"); }
 
-    async function render() {
-      loadStatus(statusEl);
-      let data;
-      try { data = await api("/api/connections"); }
-      catch (e) { $("gh-chip").textContent = "讀取失敗"; return message(e.message, "error"); }
-      const g = data.github, acc = g.account;
-      const chip = $("gh-chip"), facts = $("gh-facts"), actions = $("gh-actions");
-      facts.replaceChildren(); actions.replaceChildren();
-      $("first-time").hidden = !!g.repo;
-
-      if (!g.repo) {
-        chip.className = "chip"; chip.textContent = "尚未連接";
-        facts.hidden = true;
-        actions.append(h("a", { class: "button primary", href: "/connect/github" }, "連接 GitHub →"));
-        return;
-      }
-
-      const imported = g.documents > 0;
-      const healthy = imported && !(acc && acc.error);
-      chip.className = "chip " + (healthy ? "done" : "warn");
-      chip.textContent = imported ? "已連接" : "尚未匯入";
-      facts.hidden = false;
-      facts.append(
-        h("dt", {}, "Repo"), h("dd", {}, h("a", { href: `https://github.com/${g.repo}`, target: "_blank", rel: "noopener" }, g.repo)),
-        h("dt", {}, "帳號"), h("dd", {}, !acc ? "未登入（只能讀公開 repo）" : acc.error ? "登入已失效" : [
-          acc.avatar_url ? h("img", { class: "avatar", src: acc.avatar_url + "&s=40", alt: "" }) : null,
-          `${acc.name}（@${acc.login}）`,
-          acc.via === "gh" ? h("span", { class: "muted small" }, " · 使用 GitHub CLI 登入") : null]),
-        h("dt", {}, "已匯入"), h("dd", {}, `${g.documents} 份文件`));
-      message(acc && acc.error ? `${acc.error}請按「更改設定」重新登入。` : "", "");
-
-      const importBtn = h("button", { class: imported ? "" : "primary", type: "button" }, imported ? "重新匯入" : "匯入資料");
-      importBtn.addEventListener("click", async () => {
-        importBtn.disabled = true;
-        message(h("span", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), "匯入中… repo 越大越久，通常不到一分鐘。"), "ok");
+    function importButton(tool, imported, waitText, render) {
+      const button = h("button", { class: imported ? "" : "primary", type: "button" }, imported ? "重新匯入" : "匯入資料");
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        message(tool, waiting(waitText), "ok");
         try {
-          const r = await api("/api/github/import", { method: "POST" });
+          const r = await api(`/api/${tool}/import`, { method: "POST" });
           await render();
-          message(`完成：讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落）。`, "ok");
-        } catch (e) { message(e.message, "error"); importBtn.disabled = false; }
+          message(tool, `完成：讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落）。`, "ok");
+        } catch (e) { message(tool, e.message, "error"); button.disabled = false; }
       });
-      const disconnect = h("button", { class: "link-button", type: "button" }, "中斷連接");
-      disconnect.addEventListener("click", async () => {
-        if (!confirm(`中斷與 ${g.repo} 的連接？已匯入的資料會保留。`)) return;
-        await api("/api/github/disconnect", { method: "POST" });
+      return button;
+    }
+    function disconnectButton(tool, question, render) {
+      const button = h("button", { class: "link-button", type: "button" }, "中斷連接");
+      button.addEventListener("click", async () => {
+        if (!confirm(`${question}已匯入的資料會保留。`)) return;
+        await api(`/api/${tool}/disconnect`, { method: "POST" });
         render();
       });
-      actions.append(importBtn, h("a", { class: "button", href: "/connect/github" }, "更改設定"), disconnect);
+      return button;
     }
 
-    render();
+    // ---- GitHub ----
+    async function renderGitHub() {
+      let data;
+      try { data = await api("/api/connections"); }
+      catch (e) { chip("github", "讀取失敗"); return message("github", e.message, "error"); }
+      const g = data.github, acc = g.account;
+      $("first-time").hidden = !!g.repo;
+      if (!g.repo) {
+        chip("github", "尚未連接"); facts("github", []); message("github", "");
+        return actions("github", connectButton("github", "連接 GitHub →"));
+      }
+      const imported = g.documents > 0;
+      chip("github", imported ? "已連接" : "尚未匯入", imported && !(acc && acc.error) ? "done" : "warn");
+      facts("github", [
+        ["Repo", h("a", { href: `https://github.com/${g.repo}`, target: "_blank", rel: "noopener" }, g.repo)],
+        ["帳號", !acc ? "未登入（只能讀公開 repo）" : acc.error ? "登入已失效" : [
+          acc.avatar_url ? h("img", { class: "avatar", src: acc.avatar_url + "&s=40", alt: "" }) : null,
+          `${acc.name}（@${acc.login}）`,
+          acc.via === "gh" ? h("span", { class: "muted small" }, " · 使用 GitHub CLI 登入") : null]],
+        ["已匯入", `${g.documents} 份文件`],
+      ]);
+      message("github", acc && acc.error ? `${acc.error}請按「更改設定」重新登入。` : "");
+      actions("github",
+        importButton("github", imported, "匯入中… repo 越大越久，通常不到一分鐘。", renderGitHub),
+        settingsButton("github"),
+        disconnectButton("github", `中斷與 ${g.repo} 的連接？`, renderGitHub));
+    }
+
+    // ---- Notion ----
+    async function renderNotion() {
+      let s;
+      try { s = await api("/api/notion/status"); }
+      catch (e) { chip("notion", "讀取失敗"); return message("notion", e.message, "error"); }
+      if (!s.connected) {
+        chip("notion", "尚未連接"); facts("notion", []); message("notion", "");
+        return actions("notion", connectButton("notion", "連接 Notion →"));
+      }
+      const c = s.check;
+      const pages = c ? `${c.pages.length}${c.more_pages ? "+" : ""} 個頁面` : "—";
+      const ready = c && c.pages.length > 0;
+      chip("notion", !ready ? "未完成" : s.documents ? "已連接" : "尚未匯入", ready && s.documents ? "done" : "warn");
+      facts("notion", [
+        ["Connection", c ? `${c.connection}${c.workspace ? `（${c.workspace}）` : ""}` : "—"],
+        ["看得到", pages],
+        ["已匯入", `${s.documents} 份文件`],
+      ]);
+      message("notion", s.error ? `${s.error}請按「更改設定」重新設定。`
+        : !ready ? "Connection 還看不到任何頁面，請按「更改設定」把頁面分享給它。" : "");
+      actions("notion",
+        ready ? importButton("notion", s.documents > 0, "匯入中… 頁面越多越久。", renderNotion) : null,
+        settingsButton("notion"),
+        disconnectButton("notion", "中斷與 Notion 的連接？", renderNotion));
+    }
+
+    // ---- Discord ----
+    async function renderDiscord() {
+      let s;
+      try { s = await api("/api/discord/status"); }
+      catch (e) { chip("discord", "讀取失敗"); return message("discord", e.message, "error"); }
+      if (!s.connected) {
+        chip("discord", "尚未連接"); facts("discord", []); message("discord", "");
+        return actions("discord", connectButton("discord", "連接 Discord →"));
+      }
+      const c = s.check;
+      const server = c && c.guilds.find((g) => g.id === s.guild_id);
+      const ready = !!(server && c.message_content);
+      chip("discord", !ready ? "未完成" : s.documents ? "已連接" : "尚未匯入", ready && s.documents ? "done" : "warn");
+      facts("discord", [
+        ["Bot", c ? c.bot : "—"],
+        ["伺服器", server ? server.name : "尚未選擇"],
+        ["已匯入", `${s.documents} 份文件`],
+      ]);
+      message("discord", s.error ? `${s.error}請按「更改設定」重新設定。`
+        : c && !c.message_content ? "還沒開啟 Message Content Intent，bot 會讀不到訊息內容。請按「更改設定」。"
+        : !server ? "Bot 還沒加入你們的伺服器，請按「更改設定」邀請它。" : "");
+      actions("discord",
+        ready ? importButton("discord", s.documents > 0, "匯入中… 訊息越多越久。", renderDiscord) : null,
+        settingsButton("discord"),
+        disconnectButton("discord", "中斷與 Discord 的連接？", renderDiscord));
+    }
+
+    loadStatus($("status"));
+    renderGitHub();
+    renderNotion();
+    renderDiscord();
   </script>
 </body>
 </html>

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>連接 Notion｜專案脈絡查詢</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer">評估</a>
+      <a href="/connect" aria-current="page">連接工具</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="narrow">
+    <a class="back" href="/connect">← 連接工具</a>
+    <h1>連接 Notion</h1>
+    <ol class="steps" id="steps" aria-label="步驟">
+      <li>建立 connection</li>
+      <li>選擇頁面</li>
+      <li>匯入</li>
+    </ol>
+
+    <!-- ============================== Step 1: connection API token ============================== -->
+    <section class="panel stack" id="step-secret" hidden>
+      <div>
+        <h2>建立一個 Notion connection</h2>
+        <p class="muted" style="margin:0">Connection 是 Notion 讓其他程式讀取頁面的方式。它<b>只看得到你分享給它的頁面</b>，而且這裡只會讀取，不會修改任何東西。API token 只存在你這台電腦上。</p>
+      </div>
+      <p class="notice" id="owner-note">建立 connection 需要 workspace 的<b>擁有者（Workspace Owner）</b>權限。如果你不是擁有者，請擁有者建立好之後，把 API token 私下傳給你，直接貼到下面第 2 步。</p>
+
+      <!-- already connected -->
+      <div class="choice" id="connected" hidden>
+        <div class="row"><div id="connected-who" style="flex:1"></div><button class="link-button" type="button" id="replace">換一個 connection</button></div>
+        <div class="row" style="margin-top:0.75rem"><button class="primary big" type="button" id="continue">繼續 →</button></div>
+      </div>
+
+      <div id="setup">
+        <div class="choice">
+          <h3>1. 建立 connection</h3>
+          <div class="row" style="margin:0.4rem 0"><a class="button primary" href="https://app.notion.com/developers/connections" target="_blank" rel="noopener">開啟 Notion Developer portal ↗</a></div>
+          <ol class="how">
+            <li>先確認左側目前是你們團隊的 workspace（connection 會建立在目前的 workspace，之後不能搬移）。</li>
+            <li>在 <b>Developer connections</b> 分頁按 <b>New connection</b>。</li>
+            <li>名稱填〈你的專案名稱〉，<b>Authentication method</b> 選 <b>API token</b>，按 <b>Create connection</b>。</li>
+          </ol>
+          <figure id="fig-new"></figure>
+        </div>
+        <div class="choice" style="margin-top:0.9rem">
+          <h3>2. 複製 API token，貼到這裡</h3>
+          <p class="muted small" style="margin:0.2rem 0 0">在 connection 的 <b>Configuration</b> 分頁找到 <b>API token</b>，顯示後複製。同一頁的 <b>Capabilities</b> 要勾選 <b>Read content</b>。</p>
+          <figure id="fig-secret"></figure>
+          <div class="row" style="margin-top:0.6rem">
+            <input style="flex:1;min-width:0" type="password" id="token-input" placeholder="API token" autocomplete="off" aria-label="API token">
+            <button class="primary" type="button" id="token-save">連線</button>
+          </div>
+        </div>
+      </div>
+      <p class="notice error" id="secret-error" hidden></p>
+    </section>
+
+    <!-- ============================== Step 2: share pages ============================== -->
+    <section class="panel stack" id="step-pages" hidden>
+      <div>
+        <h2>選擇要匯入的頁面</h2>
+        <p class="muted" style="margin:0">新的 connection 一開始看不到任何頁面。分享一個頁面時，底下的子頁面也會一起分享。選你們團隊放規格、會議紀錄、決策的頁面。</p>
+      </div>
+      <div class="choice">
+        <h3>方法一：在 Developer portal 選頁面</h3>
+        <ol class="how">
+          <li>回到 connection 的設定，打開 <b>Content access</b> 分頁，按 <b>Edit access</b>。</li>
+          <li>勾選要匯入的頁面和資料庫，儲存。</li>
+        </ol>
+        <figure id="fig-access"></figure>
+      </div>
+      <div class="choice">
+        <h3>方法二：在 Notion 頁面上分享</h3>
+        <p class="muted small" style="margin:0">打開頁面，按右上角的 <b>•••</b> → <b>Connections</b> → <b>+ Add connection</b>，搜尋你剛建立的 connection 並確認。</p>
+      </div>
+      <div>
+        <div class="row"><h3 style="flex:1;margin:0">目前看得到的頁面</h3><button type="button" id="recheck">重新檢查</button></div>
+        <p class="muted small" style="margin:0.2rem 0 0.5rem">分享完回到這個分頁，會自動重新檢查。</p>
+        <div class="repo-list" id="page-list"></div>
+      </div>
+      <p class="notice error" id="pages-error" hidden></p>
+      <div class="actions">
+        <button type="button" id="pages-back">← 上一步</button>
+        <button class="primary" type="button" id="pages-next" disabled>下一步 →</button>
+      </div>
+    </section>
+
+    <!-- ============================== Step 3: import ============================== -->
+    <section class="panel" id="step-import" hidden>
+      <h2>匯入 Notion 頁面</h2>
+      <p style="margin:0">會讀取 connection 看得到的每一個頁面：</p>
+      <ul class="checks">
+        <li>頁面標題與內容（標題、清單、待辦、程式碼、引用等）</li>
+        <li>子頁面與資料庫裡的頁面（各自成為一份文件）</li>
+        <li>建立者與時間</li>
+      </ul>
+      <p class="muted small">只會讀取，不會修改 Notion。匯入的是現在的內容；之後有更新，到「連接工具」按「重新匯入」即可。</p>
+      <p class="notice" id="import-status" hidden></p>
+      <div class="actions" id="import-actions">
+        <button type="button" id="import-back">← 上一步</button>
+        <button class="primary big" type="button" id="import-start">開始匯入</button>
+      </div>
+      <div class="actions" id="done-actions" hidden>
+        <a class="button" href="/connect">回到連接工具</a>
+        <a class="button primary" href="/">開始查詢 →</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
+    import { $, post, waiting, note, busy, stepper, allStepsDone, frame } from "/static/connect-common.js?v=0.2.1";
+
+    let status = null;
+    const go = stepper(["secret", "pages", "import"]);
+
+    /* ---------------------------------------------------------------- illustrations of Notion's developer portal */
+    const PORTAL = "app.notion.com/developers/connections";
+    function tabs(active, names, x0 = 60) {
+      let x = x0;
+      return names.map((name) => {
+        const on = name === active, w = name.length * 7.4;
+        const t = `<text class="${on ? "ill-text" : "ill-muted"}" x="${x}" y="62" font-size="13"${on ? ' font-weight="700"' : ""}>${name}</text>`
+          + (on ? `<rect class="ill-ink" x="${x}" y="68" width="${w}" height="2"/>` : "");
+        x += w + 26;
+        return t;
+      }).join("");
+    }
+    function figNew() {
+      return frame(PORTAL, `
+        ${tabs("Developer connections", ["Developer connections"], 40)}
+        <rect class="ill-ink" x="420" y="46" width="110" height="28" rx="6"/><text class="ill-white" x="475" y="65" text-anchor="middle" font-size="12">New connection</text>
+        <rect class="ill-ring" x="413" y="39" width="124" height="42" rx="9"/>
+        <rect class="ill-box" x="110" y="92" width="340" height="146" rx="8"/>
+        <text class="ill-muted" x="128" y="116" font-size="11">Name</text>
+        <rect class="ill-frame" x="128" y="122" width="304" height="24" rx="4"/><text class="ill-text" x="138" y="139" font-size="12">〈你的專案名稱〉</text>
+        <text class="ill-muted" x="128" y="166" font-size="11">Authentication method</text>
+        <circle class="ill-green" cx="134" cy="182" r="5"/><text class="ill-text" x="144" y="186" font-size="12" font-weight="600">API token</text>
+        <circle class="ill-dot" cx="234" cy="182" r="5"/><text class="ill-muted" x="244" y="186" font-size="12">OAuth</text>
+        <rect class="ill-ink" x="300" y="200" width="132" height="28" rx="6"/><text class="ill-white" x="366" y="219" text-anchor="middle" font-size="12">Create connection</text>`,
+        "在 Developer connections 建立 connection，Authentication method 選 API token");
+    }
+    function figSecret() {
+      return frame(PORTAL + "/…", `
+        ${tabs("Configuration", ["Configuration", "Content access"])}
+        <text class="ill-text" x="60" y="108" font-size="14" font-weight="600">API token</text>
+        <rect class="ill-box" x="60" y="120" width="340" height="32" rx="6"/>
+        <text class="ill-text" x="72" y="141" font-size="14">••••••••••••••••••••••</text>
+        <rect class="ill-box" x="410" y="120" width="90" height="32" rx="6"/><text class="ill-text" x="455" y="141" text-anchor="middle" font-size="13">Show</text>
+        <rect class="ill-ring" x="403" y="113" width="104" height="46" rx="9"/>
+        <text class="ill-muted" x="60" y="190" font-size="12">Capabilities</text>
+        <rect class="ill-box" x="60" y="200" width="14" height="14" rx="3"/><text class="ill-text" x="67" y="212" text-anchor="middle" font-size="11" font-weight="700">✓</text>
+        <text class="ill-text" x="82" y="212" font-size="12">Read content</text>
+        <text class="ill-note" x="455" y="182" text-anchor="middle" font-size="13">↑ 顯示後複製</text>`,
+        "在 Configuration 分頁複製 API token，並確認勾選 Read content");
+    }
+    function figAccess() {
+      const rows = [["產品規格", true], ["會議紀錄", true], ["私人筆記", false]].map(([name, on], i) => {
+        const y = 128 + i * 32;
+        return `<rect class="ill-box" x="76" y="${y - 13}" width="16" height="16" rx="3"/>
+          ${on ? `<text class="ill-text" x="84" y="${y}" text-anchor="middle" font-size="13" font-weight="700">✓</text>` : ""}
+          <text class="ill-text" x="104" y="${y}" font-size="13">📄 ${name}</text>`;
+      }).join("");
+      return frame(PORTAL + "/…", `
+        ${tabs("Content access", ["Configuration", "Content access"])}
+        <rect class="ill-box" x="390" y="80" width="110" height="30" rx="6"/><text class="ill-text" x="445" y="100" text-anchor="middle" font-size="13">Edit access</text>
+        <rect class="ill-ring" x="383" y="73" width="124" height="44" rx="9"/>
+        ${rows}
+        <text class="ill-note" x="250" y="224" text-anchor="middle" font-size="13">勾選要分享的頁面後儲存</text>`,
+        "在 Content access 分頁選擇 connection 可以讀取的頁面");
+    }
+    $("fig-new").innerHTML = figNew();
+    $("fig-secret").innerHTML = figSecret();
+    $("fig-access").innerHTML = figAccess();
+
+    /* ---------------------------------------------------------------- state */
+    function render(s) {
+      status = s;
+      const c = s.check;
+      const ok = !!(s.connected && c);
+      $("connected").hidden = !ok;
+      $("setup").hidden = ok;
+      $("owner-note").hidden = ok;
+      if (ok) {
+        $("connected-who").replaceChildren(h("b", {}, c.connection || "Connection"),
+          c.workspace ? `（${c.workspace}）` : "", h("div", { class: "muted small" }, "已連接"));
+      }
+      note("secret-error", s.error || "", s.error ? "error" : "");
+      const list = $("page-list");
+      const pages = (c && c.pages) || [];
+      list.replaceChildren(...(pages.length ? pages.map((p) => h("a", { class: "repo-option", href: p.url, target: "_blank", rel: "noopener" },
+        h("span", { class: "name" }, p.title))) : [h("p", { class: "repo-option muted" }, "還看不到任何頁面。請用上面任一種方法分享頁面。")]));
+      if (c && c.more_pages) list.append(h("p", { class: "repo-option muted" }, "…還有更多頁面"));
+      $("pages-next").disabled = !pages.length;
+    }
+    async function refresh() { render(await api("/api/notion/status")); }
+
+    $("token-save").addEventListener("click", (e) => busy(e.target, async () => {
+      try { render(await post("/api/notion/token", { token: $("token-input").value })); $("token-input").value = ""; go("pages"); }
+      catch (err) { note("secret-error", err.message, "error"); }
+    }));
+    $("continue").addEventListener("click", () => go("pages"));
+    $("replace").addEventListener("click", (e) => busy(e.target, async () => { await post("/api/notion/disconnect"); await refresh(); }));
+
+    $("recheck").addEventListener("click", (e) => busy(e.target, async () => {
+      try { await refresh(); note("pages-error", ""); } catch (err) { note("pages-error", err.message, "error"); }
+    }));
+    // Coming back from the Notion tab after sharing pages: check again automatically.
+    window.addEventListener("focus", () => { if (!$("step-pages").hidden) refresh().catch(() => {}); });
+    $("pages-back").addEventListener("click", () => go("secret"));
+    $("pages-next").addEventListener("click", () => go("import"));
+
+    $("import-back").addEventListener("click", () => go("pages"));
+    $("import-start").addEventListener("click", (e) => busy(e.target, async () => {
+      $("import-back").disabled = true;
+      note("import-status", waiting("匯入中… 頁面越多越久。請不要關閉這個頁面。"), "ok");
+      try {
+        const r = await post("/api/notion/import");
+        note("import-status", `完成！讀取了 ${r.imported.documents} 份文件（${r.imported.chunks} 個段落），現在可以查詢了。`, "ok");
+        $("import-actions").hidden = true;
+        $("done-actions").hidden = false;
+        allStepsDone();
+        loadStatus($("status"));
+      } catch (err) { note("import-status", err.message, "error"); }
+      finally { $("import-back").disabled = false; }
+    }));
+
+    loadStatus($("status"));
+    refresh()
+      // Connected but nothing shared yet: that is the step left to do. Otherwise start at the beginning.
+      .then(() => go(status.connected && status.check && !status.check.pages.length ? "pages" : "secret"))
+      .catch((err) => { go("secret"); note("secret-error", err.message, "error"); });
+  </script>
+</body>
+</html>

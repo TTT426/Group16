@@ -47,8 +47,14 @@ class Settings(BaseSettings):
     seed_github_repo: str = ""
     notion_token: str = ""  # the integration only sees pages explicitly shared with it
     notion_parent_page_id: str = ""  # seeding only: page under which the scenario pages are created
+    # Seeding only: API token of a SEPARATE connection for the test workspace. Never NOTION_TOKEN, because every page
+    # the app's connection can see is imported; seed.py refuses to run if the two are the same.
+    seed_notion_token: str = ""
     discord_bot_token: str = ""  # bot needs the Message Content intent
     discord_guild_id: str = ""
+    # Seeding only: a SEPARATE test server the scenarios are posted into (the same bot may be in both). Never
+    # DISCORD_GUILD_ID: seeding creates channels and threads and would reuse real channels with matching names.
+    seed_discord_guild_id: str = ""
 
     @field_validator("llm_provider")
     @classmethod
