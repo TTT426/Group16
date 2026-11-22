@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 模型｜專案脈絡查詢</title>
+  <link rel="stylesheet" href="/static/app.css?v=0.2.4">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">專案脈絡查詢</a>
+    <nav class="nav" aria-label="頁面">
+      <a href="/">查詢</a>
+      <a href="/decisions">決策紀錄</a>
+      <a href="/observer">評估</a>
+      <a href="/connect" aria-current="page">連接工具</a>
+    </nav>
+    <span class="status" id="status">連線中…</span>
+  </header>
+
+  <main class="narrow">
+    <a class="back" href="/connect">← 連接工具</a>
+    <h1>選擇 AI 模型</h1>
+    <p class="lede">「問 AI」的回答由這裡選的模型撰寫。搜尋和匯入不需要模型，換模型也不用重新匯入。</p>
+
+    <section class="panel" id="current-panel">
+      <div class="row">
+        <div style="flex:1;min-width:12rem">
+          <div class="muted small">目前使用</div>
+          <div id="current" style="font-weight:600">讀取中…</div>
+        </div>
+        <button type="button" id="test-current">測試</button>
+      </div>
+      <p class="notice" id="current-problem" hidden></p>
+      <p class="notice" id="current-msg" hidden></p>
+    </section>
+
+    <h2 style="margin-top:1.5rem">1. 選擇提供者</h2>
+    <div class="repo-list" id="providers" role="radiogroup" aria-label="AI 模型提供者" style="max-height:none">
+      <label class="repo-option"><input type="radio" name="provider" value="claude_cli">
+        <span><span class="name">Claude Code（訂閱）</span> <span class="chip" data-chip="claude_cli">檢查中…</span>
+          <span class="desc" style="display:block">用你已經登入的 Claude Pro / Max / Team 訂閱，不另外付費。唯一支援 agent 模式（AI 自己搜尋檔案）。</span></span></label>
+      <label class="repo-option"><input type="radio" name="provider" value="anthropic_api">
+        <span><span class="name">Anthropic API</span> <span class="chip" data-chip="anthropic_api">檢查中…</span>
+          <span class="desc" style="display:block">Claude 模型，用 API key 按使用量計費。適合沒有訂閱、或要給整個團隊共用時。</span></span></label>
+      <label class="repo-option"><input type="radio" name="provider" value="openai_api">
+        <span><span class="name">OpenAI API（或相容服務）</span> <span class="chip" data-chip="openai_api">檢查中…</span>
+          <span class="desc" style="display:block">GPT 模型，用 API key 按使用量計費。也可以接 OpenRouter、LM Studio 等 OpenAI 相容的服務。</span></span></label>
+      <label class="repo-option"><input type="radio" name="provider" value="ollama">
+        <span><span class="name">Ollama（本機模型）</span> <span class="chip" data-chip="ollama">檢查中…</span>
+          <span class="desc" style="display:block">在你的電腦上跑開源模型，免費、資料不會離開這台電腦。速度和準確度取決於電腦和模型大小。</span></span></label>
+    </div>
+
+    <h2 style="margin-top:1.5rem" id="setup-title" hidden>2. 設定</h2>
+
+    <!-- ============================== Claude Code ============================== -->
+    <section class="panel stack" data-setup="claude_cli" hidden>
+      <div class="choice" data-when="not-ready">
+        <h3>安裝並登入 Claude Code</h3>
+        <ol class="how">
+          <li>依照 <a href="https://docs.claude.com/en/docs/claude-code/setup" target="_blank" rel="noopener">Claude Code 安裝說明 ↗</a> 安裝。</li>
+          <li>在終端機執行 <code>claude</code>，依照畫面用你的 Claude 帳號登入。</li>
+          <li>回到這裡按「重新檢查」。</li>
+        </ol>
+        <button type="button" data-recheck>重新檢查</button>
+      </div>
+      <p class="notice ok" data-when="ready">Claude Code 已安裝並登入<span data-account></span>。</p>
+    </section>
+
+    <!-- ============================== Anthropic API ============================== -->
+    <section class="panel stack" data-setup="anthropic_api" hidden>
+      <div class="choice" data-when="no-key">
+        <h3>建立 API key，貼到這裡</h3>
+        <ol class="how">
+          <li>開啟 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console 的 API keys ↗</a>，登入後按 <b>Create Key</b>。</li>
+          <li>名稱填〈你的專案名稱〉，建立後複製 key（以 <code>sk-ant-</code> 開頭，只會顯示一次）。</li>
+          <li>帳號需要先在 <b>Billing</b> 儲值才能使用。</li>
+        </ol>
+        <div class="row">
+          <input style="flex:1;min-width:0" type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off" aria-label="Anthropic API key">
+          <button class="primary" type="button" id="anthropic-save">儲存</button>
+        </div>
+      </div>
+      <div class="row" data-when="has-key">
+        <span style="flex:1">已儲存 Anthropic API key（只存在這台電腦的 .env）。</span>
+        <button class="link-button" type="button" data-forget="anthropic_api">移除 key</button>
+      </div>
+    </section>
+
+    <!-- ============================== OpenAI API ============================== -->
+    <section class="panel stack" data-setup="openai_api" hidden>
+      <div class="choice" data-when="no-key">
+        <h3>建立 API key，貼到這裡</h3>
+        <ol class="how">
+          <li>開啟 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI 的 API keys ↗</a>，按 <b>Create new secret key</b>。</li>
+          <li>名稱填〈你的專案名稱〉，建立後複製 key（以 <code>sk-</code> 開頭，只會顯示一次）。</li>
+        </ol>
+        <details>
+          <summary>使用 OpenAI 相容的服務（OpenRouter、LM Studio…）</summary>
+          <p class="muted small" style="margin:0.4rem 0">填服務的 API 網址（通常以 <code>/v1</code> 結尾）。本機服務不需要 key 的話，key 可以留空。</p>
+          <input type="url" id="openai-base" placeholder="https://openrouter.ai/api/v1" aria-label="API 網址">
+        </details>
+        <div class="row" style="margin-top:0.6rem">
+          <input style="flex:1;min-width:0" type="password" id="openai-key" placeholder="sk-..." autocomplete="off" aria-label="OpenAI API key">
+          <button class="primary" type="button" id="openai-save">儲存</button>
+        </div>
+      </div>
+      <div class="row" data-when="has-key">
+        <span style="flex:1" id="openai-saved"></span>
+        <button class="link-button" type="button" data-forget="openai_api">移除 key</button>
+      </div>
+    </section>
+
+    <!-- ============================== Ollama ============================== -->
+    <section class="panel stack" data-setup="ollama" hidden>
+      <div class="choice" data-when="not-ready">
+        <h3>安裝 Ollama 並下載一個模型</h3>
+        <ol class="how">
+          <li>從 <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com ↗</a> 安裝並開啟 Ollama。</li>
+          <li>在終端機下載模型，例如 <code>ollama pull qwen3:8b</code>（約 5 GB，中文表現不錯）。電腦記憶體 16 GB 以上可以試 <code>qwen3:14b</code>。</li>
+          <li>回到這裡按「重新檢查」。</li>
+        </ol>
+        <details>
+          <summary>Ollama 不在這台電腦上？</summary>
+          <p class="muted small" style="margin:0.4rem 0">填 Ollama 的網址，預設是 <code>http://localhost:11434</code>。</p>
+          <input type="url" id="ollama-base" placeholder="http://localhost:11434" aria-label="Ollama 網址">
+        </details>
+        <div class="row" style="margin-top:0.6rem"><button type="button" id="ollama-check">重新檢查</button></div>
+      </div>
+      <p class="notice ok" data-when="ready">Ollama 已開啟，找到 <span data-count></span> 個模型。</p>
+    </section>
+
+    <p class="notice error" id="setup-error" hidden></p>
+
+    <!-- ============================== model ============================== -->
+    <section id="model-section" hidden>
+      <h2 style="margin-top:1.5rem">3. 選擇模型</h2>
+      <div class="panel stack">
+        <div>
+          <label for="model">模型</label>
+          <select id="model"></select>
+          <p class="muted small" id="model-hint" style="margin:0.35rem 0 0"></p>
+        </div>
+        <div class="actions" style="margin-top:0.25rem">
+          <button type="button" id="test-choice">先測試一下</button>
+          <button class="primary big" type="button" id="use">使用這個模型</button>
+        </div>
+        <p class="notice" id="choice-msg" hidden></p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.3";
+    import { $, post, waiting, note, busy } from "/static/connect-common.js?v=0.2.4";
+
+    const HINTS = {
+      claude_cli: "「預設」會跟著 Claude Code 目前的設定。Opus 最準確，Sonnet 較快，Haiku 最快。",
+      anthropic_api: "按使用量計費。Opus 最準確，Sonnet 速度和價格較平衡，Haiku 最便宜。",
+      openai_api: "按使用量計費，價格請看服務的說明。",
+      ollama: "本機模型第一次使用要先載入，可能要等一分鐘。小模型的回答和引用比較不可靠。",
+    };
+    let state = null;      // GET /api/llm/status
+    let chosen = null;     // provider id selected in the list
+
+    const radios = [...document.querySelectorAll('input[name="provider"]')];
+    const entry = (id) => state.providers.find((p) => p.id === id);
+
+    function chip(p) {
+      const el = document.querySelector(`[data-chip="${p.id}"]`);
+      const inUse = state.current.provider === p.id && !state.current.problem;
+      el.className = "chip " + (inUse ? "done" : p.ready ? "" : "warn");
+      el.textContent = inUse ? "使用中" : p.ready ? "可以使用" : p.key_saved && p.error ? "key 有問題" : "尚未設定";
+    }
+
+    function show(section, when) {
+      section.querySelectorAll("[data-when]").forEach((el) => (el.hidden = !when.includes(el.dataset.when)));
+    }
+
+    function renderSetup() {
+      document.querySelectorAll("[data-setup]").forEach((s) => (s.hidden = s.dataset.setup !== chosen));
+      $("setup-title").hidden = !chosen;
+      if (!chosen) return;
+      const p = entry(chosen);
+      const section = document.querySelector(`[data-setup="${chosen}"]`);
+      if (chosen === "claude_cli" || chosen === "ollama") show(section, [p.ready ? "ready" : "not-ready"]);
+      else show(section, [p.key_saved || p.base_url ? "has-key" : "no-key"]);
+      if (chosen === "claude_cli") section.querySelector("[data-account]").textContent = p.account ? `（${p.account}）` : "";
+      if (chosen === "ollama") {
+        section.querySelector("[data-count]").textContent = p.models.length;
+        $("ollama-base").value = p.base_url || "";
+      }
+      if (chosen === "openai_api") {
+        $("openai-saved").textContent = p.base_url ? `已設定 ${p.base_url}${p.key_saved ? "（含 API key）" : ""}。` : "已儲存 OpenAI API key（只存在這台電腦的 .env）。";
+      }
+      note("setup-error", p.error || "", "error");
+      renderModels();
+    }
+
+    function renderModels() {
+      const p = entry(chosen);
+      $("model-section").hidden = !p.ready;
+      note("choice-msg", "");
+      if (!p.ready) return;
+      const select = $("model");
+      const inUse = state.current.provider === chosen ? state.current.model : null;
+      const preferred = inUse ?? (p.default_model || (p.models[0] && p.models[0].id) || "");
+      select.replaceChildren(...p.models.map((m) => h("option", { value: m.id, selected: m.id === preferred }, m.label)));
+      $("model-hint").textContent = HINTS[chosen] + (p.agent_mode ? "" : " agent 模式只支援 Claude Code，選這個模型時會自動改用 rag 模式。");
+    }
+
+    function renderCurrent() {
+      const problem = state.current.problem;
+      $("current").textContent = problem ? "尚未設定" : state.current.label;
+      $("test-current").hidden = !!problem;
+      note("current-problem", problem ? `${problem}請在下面選擇並設定一個 AI 模型。` : "");
+      state.providers.forEach(chip);
+    }
+
+    async function refresh() {
+      state = await api("/api/llm/status");
+      renderCurrent();
+      if (!chosen) {
+        chosen = state.current.provider in { claude_cli: 1, anthropic_api: 1, openai_api: 1, ollama: 1 } ? state.current.provider : "claude_cli";
+        radios.forEach((r) => (r.checked = r.value === chosen));
+      }
+      renderSetup();
+    }
+
+    radios.forEach((r) => r.addEventListener("change", () => { chosen = r.value; renderSetup(); }));
+    document.querySelectorAll("[data-recheck]").forEach((b) => b.addEventListener("click", () => busy(b, refresh)));
+
+    async function saveKey(provider, keyInput, baseInput, button) {
+      await busy(button, async () => {
+        note("setup-error", "");
+        try {
+          await post("/api/llm/key", { provider, api_key: keyInput.value.trim(), base_url: baseInput ? baseInput.value.trim() : "" });
+          keyInput.value = "";
+          await refresh();
+        } catch (e) { note("setup-error", e.message, "error"); }
+      });
+    }
+    $("anthropic-save").addEventListener("click", (e) => saveKey("anthropic_api", $("anthropic-key"), null, e.target));
+    $("openai-save").addEventListener("click", (e) => saveKey("openai_api", $("openai-key"), $("openai-base"), e.target));
+    document.querySelectorAll("[data-forget]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("從這台電腦移除這把 API key？")) return;
+      await post("/api/llm/forget", { provider: b.dataset.forget });
+      await refresh();
+    }));
+    $("ollama-check").addEventListener("click", (e) => busy(e.target, async () => {
+      note("setup-error", "");
+      try { await post("/api/llm/ollama", { base_url: $("ollama-base").value.trim() }); await refresh(); }
+      catch (err) { note("setup-error", err.message, "error"); }
+    }));
+
+    async function runTest(button, msgId, body) {
+      await busy(button, async () => {
+        note(msgId, waiting("正在問模型一個簡單的問題…"), "ok");
+        try {
+          const r = await post("/api/llm/test", body);
+          note(msgId, h("span", {}, h("b", {}, `${r.model}（${(r.latency_ms / 1000).toFixed(1)} 秒）：`), r.text), "ok");
+        } catch (e) { note(msgId, e.message, "error"); }
+      });
+    }
+    $("test-current").addEventListener("click", (e) => runTest(e.target, "current-msg", {}));
+    $("test-choice").addEventListener("click", (e) => runTest(e.target, "choice-msg", { provider: chosen, model: $("model").value }));
+
+    $("use").addEventListener("click", (e) => busy(e.target, async () => {
+      try {
+        const current = await post("/api/llm/select", { provider: chosen, model: $("model").value });
+        state.current = current;
+        renderCurrent();
+        note("choice-msg", h("span", {}, `已改用 ${current.label}。`, h("a", { href: "/" }, "去問問題 →")), "ok");
+        loadStatus($("status"));
+      } catch (err) { note("choice-msg", err.message, "error"); }
+    }));
+
+    loadStatus($("status"));
+    refresh().catch((e) => { $("current").textContent = "讀取失敗"; note("current-msg", e.message, "error"); });
+  </script>
+</body>
+</html>

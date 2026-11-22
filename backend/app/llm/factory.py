@@ -4,8 +4,10 @@ The provider and model are chosen on the /connect/llm page (saved as LLM_PROVIDE
 `fake` exists only for tests and offline development.
 """
 
+from pathlib import Path
+
 from ..config import Settings
-from .base import LLMProvider
+from .base import LLMError, LLMProvider, LLMResult
 
 PROVIDERS = ("claude_cli", "anthropic_api", "openai_api", "ollama", "fake")
 
@@ -42,3 +44,19 @@ def get_provider(settings: Settings, name: str | None = None, model: str | None 
 
         return FakeProvider()
     raise ValueError(f"Unknown LLM_PROVIDER {name!r}. Use one of: {', '.join(PROVIDERS)}.")
+
+
+class UnavailableProvider:
+    """Stands in when LLM_PROVIDER is invalid, so asking fails with a message instead of a server error."""
+
+    supports_workspace = False
+
+    def __init__(self, name: str, reason: str) -> None:
+        self.name = name
+        self.reason = reason
+
+    async def generate(
+        self, system: str, user: str, *, max_tokens: int = 4000, workspace: Path | None = None,
+        json_schema: dict | None = None,
+    ) -> LLMResult:
+        raise LLMError(self.reason, retryable=False)

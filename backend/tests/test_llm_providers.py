@@ -1,4 +1,4 @@
-"""API and local providers (Anthropic, OpenAI-compatible, Ollama) with mocked HTTP / SDK."""
+"""API and local providers (Anthropic, OpenAI-compatible, Ollama) with mocked HTTP / SDK, and the catalog."""
 
 import json
 from types import SimpleNamespace
@@ -7,7 +7,8 @@ import anthropic
 import httpx
 import pytest
 
-from app.llm import anthropic_api, ollama, openai_api
+from app.config import Settings
+from app.llm import anthropic_api, catalog, ollama, openai_api
 from app.llm.base import LLMError
 from app.qa.prompts import ANSWER_SCHEMA
 
@@ -151,3 +152,60 @@ def test_ollama_model_list():
     tags = {"models": [{"name": "qwen3:8b", "details": {"parameter_size": "8.2B", "quantization_level": "Q4_K_M"}}]}
     client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=tags)))
     assert ollama.list_models(client=client) == [{"id": "qwen3:8b", "label": "qwen3:8b（8.2B Q4_K_M）"}]
+
+
+# ---------------------------------------------------------------- catalog
+
+
+async def test_catalog_status(monkeypatch):
+    monkeypatch.setattr(catalog, "claude_cli_login", lambda exe: {"logged_in": True, "method": "claude.ai"})
+    monkeypatch.setattr(catalog.ollama, "list_models", lambda base_url: [{"id": "qwen3:8b", "label": "qwen3:8b"}])
+
+    async def bad_key(key):
+        raise LLMError(anthropic_api.MSG_BAD_KEY)
+    monkeypatch.setattr(catalog.anthropic_api, "list_models", bad_key)
+
+    s = await catalog.status(Settings(_env_file=None, anthropic_api_key="sk-ant-old"))
+    by_id = {p["id"]: p for p in s["providers"]}
+    assert s["current"] == {"provider": "claude_cli", "model": "", "label": "Claude Code（訂閱） · 預設模型",
+                            "agent_mode": True, "problem": None}
+    assert by_id["claude_cli"]["ready"] and by_id["claude_cli"]["account"] == "claude.ai"
+    assert by_id["anthropic_api"] | {"models": []} == by_id["anthropic_api"]
+    assert not by_id["anthropic_api"]["ready"] and by_id["anthropic_api"]["error"] == anthropic_api.MSG_BAD_KEY
+    assert by_id["openai_api"]["ready"] is False and by_id["openai_api"]["error"] is None  # not set up: no call
+    assert by_id["ollama"]["ready"] and by_id["ollama"]["models"][0]["id"] == "qwen3:8b"
+    assert "sk-ant-old" not in json.dumps(s)  # keys never leave the server
+
+
+async def test_catalog_claude_cli_missing_or_logged_out(monkeypatch):
+    def missing(exe):
+        raise LLMError(catalog.MSG_CLI_MISSING)
+    monkeypatch.setattr(catalog, "claude_cli_login", missing)
+    assert (await catalog._claude_cli(Settings(_env_file=None)))["error"] == catalog.MSG_CLI_MISSING
+    monkeypatch.setattr(catalog, "claude_cli_login", lambda exe: {"logged_in": False, "method": ""})
+    assert (await catalog._claude_cli(Settings(_env_file=None)))["error"] == catalog.MSG_CLI_LOGGED_OUT
+
+
+@pytest.mark.parametrize("settings, problem", [
+    ({"llm_provider": "anthropic_api"}, anthropic_api.MSG_NO_KEY),
+    ({"llm_provider": "anthropic_api", "anthropic_api_key": "sk-ant-x"}, None),  # validity is checked when asking
+    ({"llm_provider": "openai_api"}, "還沒有設定 OpenAI API key。"),
+    ({"llm_provider": "openai_api", "openai_base_url": "http://localhost:1234/v1"}, "還沒有選擇模型。"),
+    ({"llm_provider": "openai_api", "openai_api_key": "sk-x", "llm_model": "gpt-x"}, None),
+    ({"llm_provider": "ollama"}, "還沒有選擇 Ollama 模型。"),
+    ({"llm_provider": "ollama", "llm_model": "qwen3:8b"}, None),  # a stopped server shows up when asking
+    ({"llm_provider": "nope"}, "不認得 LLM_PROVIDER=nope。"),
+])
+def test_setup_problem_needs_no_network(settings, problem):
+    assert catalog.setup_problem(Settings(_env_file=None, **settings)) == problem
+
+
+def test_setup_problem_for_claude_code(monkeypatch):
+    def missing(exe):
+        raise LLMError(catalog.MSG_CLI_MISSING)
+    monkeypatch.setattr(catalog, "claude_cli_login", missing)
+    assert catalog.setup_problem(Settings(_env_file=None)) == catalog.MSG_CLI_MISSING
+    monkeypatch.setattr(catalog, "claude_cli_login", lambda exe: {"logged_in": False, "method": ""})
+    assert catalog.setup_problem(Settings(_env_file=None)) == catalog.MSG_CLI_LOGGED_OUT
+    monkeypatch.setattr(catalog, "claude_cli_login", lambda exe: {"logged_in": None, "method": ""})  # old CLI
+    assert catalog.setup_problem(Settings(_env_file=None)) is None

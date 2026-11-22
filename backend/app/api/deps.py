@@ -6,7 +6,7 @@ from ..config import get_settings
 from ..embeddings.base import Embedder
 from ..embeddings.factory import get_embedder
 from ..llm.base import LLMProvider
-from ..llm.factory import get_provider
+from ..llm.factory import UnavailableProvider, get_provider
 from ..qa.workspace import WorkspaceExport
 from ..retrieval.hybrid import ChunkIndex
 
@@ -22,7 +22,11 @@ def chunk_index_dep() -> ChunkIndex:
 
 @lru_cache
 def llm_dep() -> LLMProvider:
-    return get_provider(get_settings())
+    settings = get_settings()
+    try:
+        return get_provider(settings)
+    except ValueError:  # e.g. a typo in a hand-edited .env
+        return UnavailableProvider(settings.llm_provider, f"不認得 LLM_PROVIDER={settings.llm_provider}。")
 
 
 @lru_cache
