@@ -12,6 +12,7 @@
 需要事先安裝：
 - **Python 3.11 以上**（[下載](https://www.python.org/downloads/)；Windows 安裝時請勾選「Add python.exe to PATH」）
 - **Claude Code CLI**，並執行一次 `claude` 登入（AI 回答使用你的 Claude 訂閱額度）。沒有安裝的話，整合搜尋還是能用
+- Or, instead of Claude Code: an Anthropic or OpenAI API key, or a local model through [Ollama](https://ollama.com), chosen on the Connect tools page (see [AI model](#ai-model-connectllm))
 
 | 系統 | 啟動方式 |
 |---|---|
@@ -46,6 +47,8 @@ AI 回答有三種模式，用 `.env` 的 `QA_MODE` 設定，比較結果見 [do
 | `full` | 整個專案的內容都放進 Claude 的 context（專案太大時自動改用 rag） |
 | `agent` | 專案匯出成 markdown 資料夾，Claude 用唯讀的 Grep / Glob / Read 自己搜尋 |
 
+`agent` needs Claude Code (it searches the files itself). With any other model, `agent` questions are answered in `rag` mode, with a notice.
+
 ### 評估（`/observer`）
 對應 CP1 的結構化觀察：
 1. 每位受試者的每一輪各建立一個場次（對照輪，或工具輪的 AI 回答 / 整合搜尋）
@@ -76,6 +79,22 @@ Connect the team's own tools so that search and AI answers use your real data (u
 3. **Import**: reads threads (including forum posts and archived threads) and channel messages the bot can see.
 
 Settings are saved to `.env` and apply immediately.
+
+#### AI model (`/connect/llm`)
+Below the line on `/connect`: choose the model that writes AI answers. Search and import don't use a model, and changing it needs no re-import.
+
+| Provider | What you need | Notes |
+|---|---|---|
+| Claude Code (default) | Claude Code installed and logged in (`claude`) | Uses your Claude subscription; the only one that supports `agent` mode |
+| Anthropic API | An API key from console.anthropic.com | Billed per token; default model `claude-opus-5-5` |
+| OpenAI API | An API key from platform.openai.com, or the URL of an OpenAI-compatible server (OpenRouter, LM Studio, ...) | Billed per token (by that service) |
+| Ollama | Ollama running, with a model pulled (`ollama pull qwen3:8b`) | Free and local; quality depends on the model size |
+
+The page checks each provider (CLI login, key, server), lists the models it offers, has a "test" button that asks the model one short question, and saves the choice to `.env` (`LLM_PROVIDER`, `LLM_MODEL`; keys are never sent back to the browser). The ask page (`/`) also has a model picker next to the "ask" button, and the top bar of every page shows the model in use with a button to switch it; both are locked during an evaluation session.
+
+When something is wrong:
+- **No model set up** (no key, no model chosen, Claude Code missing or logged out): known without calling anything, so the top bar, the ask page and `/connect` warn right away, with a link to `/connect/llm`. Search keeps working.
+- **A model is set up but fails** (invalid key, server down, timeout, rate limit): this only shows up by calling it, so the error appears when a question is asked (or with "test"). Errors that asking again won't fix are not retried. There is no automatic switch to another provider, so the app never moves from a local model to a paid or cloud one on its own.
 
 > "Sign in with GitHub" needs the client id of a GitHub OAuth App (`GITHUB_CLIENT_ID`, public). Until it is set, that button is hidden and the other two sign-in options work as usual.
 
@@ -128,6 +147,7 @@ ruff check .                        # lint（合併前必須通過）
 - `GROUP16_TEST_EMBEDDER=fastembed pytest -k real_embedder`：用真實的 embedding 模型測檢索
 - `python scripts/eval_modes.py`：用真的 Claude 比較三種問答模式，結果寫到 `docs/EVAL_MODES.md`（會用到訂閱額度）
 - `python -m app.llm "你好"`：測試 Claude CLI 是否可用
+- `python -m app.llm "你好" --provider ollama --model qwen3:8b`: test another provider from the command line (keys and URLs come from `.env`)
 
 ### API
 | 路徑 | 用途 |
@@ -139,6 +159,7 @@ ruff check .                        # lint（合併前必須通過）
 | `/api/decisions/...` | 決策草稿、修改、確認、`export.md` |
 | `POST /ingest` | 從真實工具匯入 |
 | `/connect`, `/api/github/...`, `/api/notion/...`, `/api/discord/...` | Connect tools: sign-in, choices, import (localhost only) |
+| `/connect/llm`, `/api/llm/...` | AI model: provider status, API keys, choice, test call (localhost only) |
 | `GET /api/config`、`GET /health` | 目前設定 |
 
 完整說明在 `/docs`。
