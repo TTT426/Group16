@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     seed_notion_token: str = ""
     discord_bot_token: str = ""  # bot needs the Message Content intent
     discord_guild_id: str = ""
+    # Seeding only: a SEPARATE test server the scenarios are posted into (the same bot may be in both). Never
+    # DISCORD_GUILD_ID: seeding creates channels and threads and would reuse real channels with matching names.
+    seed_discord_guild_id: str = ""
 
     @field_validator("llm_provider")
     @classmethod
