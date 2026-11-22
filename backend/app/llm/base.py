@@ -26,6 +26,8 @@ class LLMError(RuntimeError):
 @runtime_checkable
 class LLMProvider(Protocol):
     name: str
+    # True if the provider can search a `workspace` folder itself (needed by the agent QA mode).
+    supports_workspace: bool
 
     async def generate(
         self, system: str, user: str, *, max_tokens: int = 4000, workspace: Path | None = None,
@@ -33,7 +35,8 @@ class LLMProvider(Protocol):
     ) -> LLMResult:
         """Return the model's text reply to a single-turn prompt.
 
-        With `workspace`, the model may search and read the files in that folder (read-only) before answering.
+        With `workspace` (only if `supports_workspace`), the model may search and read the files in that
+        folder (read-only) before answering.
         With `json_schema`, the reply text is a JSON object that matches the schema.
         """
         ...

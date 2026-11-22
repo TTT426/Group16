@@ -29,6 +29,7 @@ from .base import LLMError, LLMResult
 
 class ClaudeCLIProvider:
     name = "claude_cli"
+    supports_workspace = True
 
     def __init__(
         self,

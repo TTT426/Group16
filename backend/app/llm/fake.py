@@ -8,6 +8,7 @@ from .base import LLMResult
 
 class FakeProvider:
     name = "fake"
+    supports_workspace = True
 
     def __init__(self, responder: Callable[[str, str], str] | None = None) -> None:
         self._responder = responder or (lambda system, user: f"[fake answer] {user[:200]}")
