@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 
-from .api import ask, decisions, evaluation, hub, ingest, search
+from .api import ask, connect_notion, decisions, evaluation, hub, ingest, search
 from .config import REPO_ROOT, get_settings
 from .db.models import Document
 from .db.session import get_session_factory, init_db
@@ -37,6 +37,7 @@ app.include_router(ingest.router)
 app.include_router(evaluation.router)
 app.include_router(decisions.router)
 app.include_router(hub.router)  # /connect: connect GitHub / Notion / Discord and import
+app.include_router(connect_notion.router)
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
