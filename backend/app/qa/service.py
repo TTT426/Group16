@@ -122,7 +122,7 @@ class QAService:
                     json_schema=prompts.ANSWER_SCHEMA)
             except LLMError as exc:
                 calls += 1
-                if attempt or "not found" in str(exc):  # a missing CLI will not fix itself
+                if attempt or not exc.retryable:  # e.g. a bad key or a missing model will not fix itself
                     raise
                 continue
             calls += 1

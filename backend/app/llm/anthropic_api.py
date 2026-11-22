@@ -24,6 +24,7 @@ MSG_BAD_KEY = "Anthropic API key 無效，請到 console.anthropic.com 重新建
 MSG_NO_PERMISSION = "這把 Anthropic API key 沒有使用權限（帳號可能還沒有儲值或被停用）。"
 MSG_RATE_LIMIT = "Anthropic API 使用量已達上限，請稍後再試。"
 MSG_UNREACHABLE = "連不上 Anthropic API，請檢查網路。"
+MSG_TIMEOUT = "Anthropic API 太久沒有回應，請稍後再試。"
 MSG_REFUSED = "模型拒絕回答這個問題。"
 MSG_TRUNCATED = "回答太長被截斷了，請把問題問得更具體一點。"
 
@@ -31,23 +32,25 @@ MSG_TRUNCATED = "回答太長被截斷了，請把問題問得更具體一點。
 def _error(exc: anthropic.AnthropicError) -> LLMError:
     """A user-facing error for an SDK exception (most specific first)."""
     if isinstance(exc, anthropic.AuthenticationError):
-        return LLMError(MSG_BAD_KEY)
+        return LLMError(MSG_BAD_KEY, retryable=False)
     if isinstance(exc, anthropic.PermissionDeniedError):
-        return LLMError(MSG_NO_PERMISSION)
+        return LLMError(MSG_NO_PERMISSION, retryable=False)
     if isinstance(exc, anthropic.NotFoundError):
-        return LLMError(f"Anthropic API 找不到這個模型：{exc.message}")
+        return LLMError(f"Anthropic API 找不到這個模型：{exc.message}", retryable=False)
     if isinstance(exc, anthropic.RateLimitError):
-        return LLMError(MSG_RATE_LIMIT)
+        return LLMError(MSG_RATE_LIMIT, retryable=False)
     if isinstance(exc, anthropic.APIStatusError):
-        return LLMError(f"Anthropic API 錯誤（{exc.status_code}）：{exc.message}")
+        return LLMError(f"Anthropic API 錯誤（{exc.status_code}）：{exc.message}", retryable=exc.status_code >= 500)
+    if isinstance(exc, anthropic.APITimeoutError):
+        return LLMError(MSG_TIMEOUT, retryable=False)
     if isinstance(exc, anthropic.APIConnectionError):
-        return LLMError(MSG_UNREACHABLE)
+        return LLMError(MSG_UNREACHABLE, retryable=False)
     return LLMError(f"Anthropic API 錯誤：{exc}")
 
 
 def _client(api_key: str, timeout_s: float) -> anthropic.AsyncAnthropic:
     if not api_key:
-        raise LLMError(MSG_NO_KEY)
+        raise LLMError(MSG_NO_KEY, retryable=False)
     return anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout_s)
 
 
@@ -93,9 +96,9 @@ class AnthropicAPIProvider:
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         if response.stop_reason == "refusal":
-            raise LLMError(MSG_REFUSED)
+            raise LLMError(MSG_REFUSED, retryable=False)
         if response.stop_reason == "max_tokens":
-            raise LLMError(MSG_TRUNCATED)
+            raise LLMError(MSG_TRUNCATED, retryable=False)
         text = "".join(block.text for block in response.content if block.type == "text")
         if not text.strip():
             raise LLMError("Anthropic API 回傳了空白的回答。")

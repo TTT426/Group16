@@ -14,7 +14,7 @@ from .base import LLMError, LLMResult
 
 DEFAULT_BASE_URL = "http://localhost:11434"
 
-MSG_NOT_RUNNING = "連不上 Ollama。請先安裝並開啟 Ollama（ollama.com），再按「重新檢查」。"
+MSG_NOT_RUNNING = "連不上 Ollama。請確認 Ollama 已安裝並開啟（ollama.com）。"
 
 
 def _base(base_url: str) -> str:
@@ -31,7 +31,7 @@ def list_models(base_url: str = "", timeout_s: float = 5.0, client: httpx.Client
             response = httpx.get(url, timeout=timeout_s)
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise LLMError(MSG_NOT_RUNNING) from exc
+        raise LLMError(MSG_NOT_RUNNING, retryable=False) from exc
     models = []
     for m in response.json().get("models", []):
         details = m.get("details") or {}
@@ -57,7 +57,7 @@ class OllamaProvider:
         json_schema: dict | None = None,
     ) -> LLMResult:
         if not self.model:
-            raise LLMError("還沒有選擇 Ollama 模型。")
+            raise LLMError("還沒有選擇 Ollama 模型。", retryable=False)
         body: dict = {"model": self.model, "stream": False,
                       "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         if self.num_ctx:
@@ -70,12 +70,13 @@ class OllamaProvider:
             async with httpx.AsyncClient(timeout=self.timeout_s, transport=self._transport) as client:
                 response = await client.post(f"{self.base_url}/api/chat", json=body)
         except httpx.TimeoutException as exc:
-            raise LLMError(f"Ollama 超過 {self.timeout_s:.0f} 秒沒有回應（本機模型第一次載入比較慢）。") from exc
+            raise LLMError(f"Ollama 超過 {self.timeout_s:.0f} 秒沒有回應（本機模型第一次載入比較慢）。",
+                           retryable=False) from exc
         except httpx.HTTPError as exc:
-            raise LLMError(MSG_NOT_RUNNING) from exc
+            raise LLMError(MSG_NOT_RUNNING, retryable=False) from exc
         latency_ms = int((time.perf_counter() - start) * 1000)
         if response.status_code == 404:
-            raise LLMError(f"Ollama 找不到模型 {self.model}，請先執行 ollama pull {self.model}。")
+            raise LLMError(f"Ollama 找不到模型 {self.model}，請先執行 ollama pull {self.model}。", retryable=False)
         if response.status_code >= 400:
             raise LLMError(f"Ollama 錯誤（{response.status_code}）：{response.text[:300]}")
 

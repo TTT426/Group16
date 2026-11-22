@@ -142,8 +142,9 @@ async def test_cli_generate_uses_stdin(monkeypatch):
 
 async def test_cli_missing_executable():
     provider = ClaudeCLIProvider(executable="definitely-not-a-real-binary-xyz")
-    with pytest.raises(LLMError, match="not found"):
+    with pytest.raises(LLMError, match="找不到 Claude Code") as missing:
         await provider.generate("SYS", "hi")
+    assert missing.value.retryable is False
 
 
 # ---------- fake + json utils ----------

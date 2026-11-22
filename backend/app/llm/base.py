@@ -21,7 +21,15 @@ class LLMResult(BaseModel):
 
 
 class LLMError(RuntimeError):
-    """Raised when a provider fails to produce a usable answer."""
+    """Raised when a provider fails to produce a usable answer.
+
+    `retryable=False` marks errors that asking again will not fix (bad key, missing model, server not
+    running, timeout), so callers don't spend a second call on them.
+    """
+
+    def __init__(self, message: str, *, retryable: bool = True) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 @runtime_checkable

@@ -180,3 +180,17 @@ async def test_transient_cli_error_is_retried_once(db_session, embedder, ingeste
     assert result.llm_calls == 2 and result.sections
     with pytest.raises(LLMError):
         await make_service(db_session, embedder, Flaky(2), tmp_path).answer("付款", "rag")
+
+
+async def test_errors_that_cannot_fix_themselves_are_not_retried(db_session, embedder, ingested, tmp_path):
+    from app.llm.base import LLMError
+
+    class BadKey(FakeProvider):
+        async def generate(self, *args, **kwargs):
+            self.calls.append(args)
+            raise LLMError("API key 無效", retryable=False)
+
+    provider = BadKey()
+    with pytest.raises(LLMError, match="API key 無效"):
+        await make_service(db_session, embedder, provider, tmp_path).answer("付款", "rag")
+    assert len(provider.calls) == 1
