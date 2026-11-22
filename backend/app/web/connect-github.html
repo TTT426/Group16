@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>連接 GitHub｜專案脈絡查詢</title>
-  <link rel="stylesheet" href="/static/app.css?v=0.2.1">
+  <link rel="stylesheet" href="/static/app.css?v=0.2.4">
 </head>
 <body>
   <header class="topbar">
@@ -140,8 +140,8 @@
   </main>
 
   <script type="module">
-    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
-    import { $, post, waiting, note, busy, stepper, allStepsDone, esc, frame } from "/static/connect-common.js?v=0.2.1";
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.3";
+    import { $, post, waiting, note, busy, stepper, allStepsDone, esc, frame } from "/static/connect-common.js?v=0.2.4";
 
     let account = null;
     const go = stepper(["login", "repo", "import"], (step) => { if (step === "repo") loadRepos(); });

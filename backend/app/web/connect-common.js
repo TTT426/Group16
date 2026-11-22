@@ -1,5 +1,5 @@
 // Shared helpers for the step-by-step connect pages (/connect/github, /connect/notion, ...).
-import { api, h } from "/static/common.js?v=0.2.0";
+import { api, h } from "/static/common.js?v=0.2.3";
 
 export const $ = (id) => document.getElementById(id);
 export const post = (path, body) => api(path, { method: "POST", body: body || {} });

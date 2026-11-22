@@ -140,7 +140,8 @@ def main() -> None:
         env["EMBEDDING_PROVIDER"] = "hashing"
     env = load_scenarios(env, args.reset)
     if not shutil.which(os.environ.get("CLAUDE_CLI_PATH", "claude")):
-        say("找不到 Claude Code CLI：整合搜尋可以用，但「AI 回答」需要先安裝 Claude Code 並執行一次 claude 登入。")
+        say("找不到 Claude Code CLI：整合搜尋可以用；「AI 回答」需要安裝 Claude Code 並執行一次 claude 登入，"
+            "或在瀏覽器的「連接工具」頁面改用其他 AI 模型。")
 
     port = free_port(args.port)
     if port != args.port:

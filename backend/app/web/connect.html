@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>連接工具｜專案脈絡查詢</title>
-  <link rel="stylesheet" href="/static/app.css?v=0.2.1">
+  <link rel="stylesheet" href="/static/app.css?v=0.2.4">
 </head>
 <body>
   <header class="topbar">
@@ -20,7 +20,7 @@
 
   <main class="narrow">
     <h1>連接你們的工具</h1>
-    <p class="lede">把團隊的 GitHub、Notion、Discord 接上來，查詢和 AI 回答才會用到你們真正的討論。沒有連接時，用的是內建的示範情境。</p>
+    <p class="lede">把團隊的 GitHub、Notion、Discord 接上來，查詢和 AI 回答才會用到你們真正的討論。沒有連接時，用的是內建的示範情境。最下面可以選擇負責回答的 AI 模型。</p>
 
     <p class="notice" id="first-time" hidden><b>第一步：</b>連接你們團隊的 GitHub repo，大約一分鐘。</p>
 
@@ -47,10 +47,21 @@
       <p class="notice" id="discord-msg" hidden></p>
       <div class="row" id="discord-actions"></div>
     </section>
+
+    <h2 class="divider" id="ai">AI 模型</h2>
+    <p class="muted" style="margin:0 0 0.9rem;text-align:center">「問 AI」的回答由這個模型撰寫。上面連接的是 AI 讀取的資料，這裡選的是負責回答的 AI。</p>
+
+    <section class="panel tool-card" data-tool="llm">
+      <header><h2>AI 模型</h2><span class="chip" id="llm-chip">讀取中…</span></header>
+      <p class="what">Claude Code 訂閱、Anthropic API、OpenAI API，或在本機跑的 Ollama 模型</p>
+      <dl class="facts" id="llm-facts" hidden></dl>
+      <p class="notice" id="llm-msg" hidden></p>
+      <div class="row" id="llm-actions"></div>
+    </section>
   </main>
 
   <script type="module">
-    import { api, h, loadStatus } from "/static/common.js?v=0.2.0";
+    import { api, h, loadStatus } from "/static/common.js?v=0.2.3";
 
     const $ = (id) => document.getElementById(id);
     const waiting = (text) => h("span", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), text);
@@ -176,7 +187,35 @@
         disconnectButton("discord", "中斷與 Discord 的連接？", renderDiscord));
     }
 
+    // ---- AI model ----
+    async function renderLLM() {
+      // Only "is it set up?" here; a bad key or a server that is down shows up when asking (or on /connect/llm).
+      let c;
+      try { c = await api("/api/llm/current"); }
+      catch (e) { chip("llm", "讀取失敗"); return message("llm", e.message, "error"); }
+      const ready = !c.problem;
+      chip("llm", ready ? "已設定" : "需要設定", ready ? "done" : "warn");
+      facts("llm", [
+        ["使用中", c.label],
+        ["模式", c.agent_mode ? "rag / full / agent 都可以用" : "rag / full（agent 模式只支援 Claude Code）"],
+      ]);
+      message("llm", ready ? "" : `${c.problem}請按「設定 AI 模型」。`);
+      const test = h("button", { type: "button" }, "測試");
+      test.addEventListener("click", async () => {
+        test.disabled = true;
+        message("llm", waiting("正在問模型一個簡單的問題…"), "ok");
+        try {
+          const r = await api("/api/llm/test", { method: "POST", body: {} });
+          message("llm", `${r.model}（${(r.latency_ms / 1000).toFixed(1)} 秒）：${r.text}`, "ok");
+        } catch (e) { message("llm", e.message, "error"); }
+        test.disabled = false;
+      });
+      actions("llm", h("a", { class: ready ? "button" : "button primary", href: "/connect/llm" },
+        ready ? "更改 AI 模型" : "設定 AI 模型"), ready ? test : null);
+    }
+
     loadStatus($("status"));
+    renderLLM();
     renderGitHub();
     renderNotion();
     renderDiscord();

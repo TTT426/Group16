@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>專案脈絡查詢</title>
-  <link rel="stylesheet" href="/static/app.css?v=0.2.0">
+  <link rel="stylesheet" href="/static/app.css?v=0.2.4">
 </head>
 <body>
   <div id="session-banner" class="banner" hidden></div>
@@ -33,6 +33,7 @@
           <button type="button" data-kind="search" aria-pressed="false">整合搜尋</button>
         </div>
         <span class="grow"></span>
+        <select id="model-select" aria-label="回答用的 AI 模型" title="回答用的 AI 模型" hidden></select>
         <button class="primary" type="submit" id="submit">查詢</button>
       </div>
     </form>
@@ -52,7 +53,7 @@
   </main>
 
   <script type="module">
-    import { api, h, TOOL_NAMES, goUrl, loadStatus } from "/static/common.js?v=0.2.0";
+    import { api, h, TOOL_NAMES, goUrl, loadStatus } from "/static/common.js?v=0.2.3";
 
     const params = new URLSearchParams(location.search);
     const sessionId = params.get("session") ? Number(params.get("session")) : null;
@@ -63,12 +64,14 @@
     const sourcesEl = document.getElementById("sources");
     const sourcesTitle = document.getElementById("sources-title");
     const kindButtons = [...document.querySelectorAll("[data-kind]")];
+    const modelSelect = document.getElementById("model-select");
     let kind = "ai";
 
     function setKind(next) {
       kind = next;
       kindButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
       submitBtn.textContent = kind === "ai" ? "問 AI" : "搜尋";
+      modelSelect.hidden = kind !== "ai" || !modelSelect.options.length;
     }
     kindButtons.forEach((b) => b.addEventListener("click", () => setKind(b.dataset.kind)));
     setKind("ai");
@@ -81,6 +84,7 @@
         if (s.round === "tool") {
           setKind(s.mode === "search" ? "search" : "ai");
           kindButtons.forEach((b) => (b.disabled = true));
+          modelSelect.disabled = true;  // the model stays fixed during an evaluation session
           banner.textContent = `評估場次 ${s.id}（${s.participant}，工具輪：${s.mode === "search" ? "整合搜尋" : "AI 回答"}）。你的查詢與點開的來源會被記錄。`;
         } else {
           banner.textContent = `評估場次 ${s.id} 是對照輪，這一輪請直接使用 GitHub、Notion、Discord。`;
@@ -88,10 +92,14 @@
       }).catch(() => {});
     }
 
-    loadStatus(document.getElementById("status")).then((config) => {
+    loadStatus(document.getElementById("status"), { canSwitch: !sessionId }).then((config) => {
       const examples = document.getElementById("examples");
       for (const q of ["付款失敗 PAYMENT_DUPLICATE 的原因是什麼？為什麼現在這樣處理？", "客人為什麼會收到兩封確認信？"]) {
         examples.append(h("li", {}, h("button", { type: "button", onclick: () => { questionEl.value = q; questionEl.focus(); } }, q)));
+      }
+      if (config && config.llm_problem) {  // no AI model set up: say so before anyone asks
+        form.before(h("p", { class: "notice", id: "llm-problem" }, h("b", {}, "「AI 回答」還不能用："), config.llm_problem,
+          " 整合搜尋可以照常使用。", sessionId ? "" : [" ", h("a", { href: "/connect/llm" }, "選擇 AI 模型 →")]));
       }
       if (config && !Object.keys(config.documents).length) {
         examples.parentElement.prepend(h("p", { class: "notice" }, "目前沒有任何資料。請先執行 start.bat（會匯入評估情境），或用 scripts/ingest.py 匯入。"));
@@ -107,6 +115,38 @@
           h("a", { href: "/connect" }, "連接你們的 GitHub repo"), "。"));
       }).catch(() => {});
     }
+
+    // AI model picker: every model of the providers that are set up; the full setup is on /connect/llm.
+    const SETUP = "__setup";
+    let modelValue = "";
+    async function loadModels() {
+      const s = await api("/api/llm/status");
+      const value = (p, m) => JSON.stringify([p, m]);
+      modelValue = value(s.current.provider, s.current.model);
+      const groups = s.providers.filter((p) => p.ready).map((p) =>
+        h("optgroup", { label: p.label }, p.models.map((m) => h("option", { value: value(p.id, m.id) }, m.label))));
+      modelSelect.replaceChildren(...groups, h("option", { value: SETUP }, "設定其他 AI 模型…"));
+      if (![...modelSelect.options].some((o) => o.value === modelValue)) {
+        modelSelect.prepend(h("option", { value: modelValue }, s.current.problem ? "尚未設定 AI 模型" : s.current.label));
+      }
+      modelSelect.value = modelValue;
+      setKind(kind);
+    }
+    modelSelect.addEventListener("change", async () => {
+      if (modelSelect.value === SETUP) { location.href = "/connect/llm"; return; }
+      const [provider, model] = JSON.parse(modelSelect.value);
+      modelSelect.disabled = true;
+      try {
+        await api("/api/llm/select", { method: "POST", body: { provider, model } });
+        modelValue = modelSelect.value;
+        document.getElementById("llm-problem")?.remove();  // a model offered here is set up
+        loadStatus(document.getElementById("status"), { canSwitch: !sessionId });
+      } catch (err) {
+        modelSelect.value = modelValue;
+        resultEl.replaceChildren(h("p", { class: "notice error" }, err.message));
+      } finally { modelSelect.disabled = !!sessionId; }
+    });
+    loadModels().catch(() => {});
 
     function sourceCard(s, label, extra = {}) {
       const link = goUrl(s.url, { session_id: sessionId, ...extra });
@@ -204,7 +244,7 @@
       if (!question) return;
       submitBtn.disabled = true;
       const started = Date.now();
-      const label = kind === "ai" ? "Claude 正在查資料並整理回答" : "搜尋中";
+      const label = kind === "ai" ? "AI 正在查資料並整理回答" : "搜尋中";
       const counter = h("span", {});
       resultEl.replaceChildren(h("p", { class: "thinking" }, h("span", { class: "pulse", "aria-hidden": "true" }), label, counter));
       const tick = setInterval(() => (counter.textContent = `…${Math.round((Date.now() - started) / 1000)} 秒`), 1000);
@@ -217,7 +257,8 @@
           renderSearch(await api(`/search?${query}`));
         }
       } catch (err) {
-        resultEl.replaceChildren(h("p", { class: "notice error" }, err.message));
+        const fix = kind === "ai" && !sessionId ? [" ", h("a", { href: "/connect/llm" }, "檢查 AI 模型設定 →")] : "";
+        resultEl.replaceChildren(h("p", { class: "notice error" }, err.message, fix));
       } finally {
         clearInterval(tick);
         submitBtn.disabled = false;
