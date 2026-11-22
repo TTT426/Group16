@@ -18,7 +18,9 @@ from app.seeding import (
     SeedState,
     github_seed_target,
     markdown_to_blocks,
+    notion_seed_target,
     seed,
+    seed_workspace_settings,
 )
 
 SCENARIO_DIR = Path(__file__).resolve().parents[2] / "scripts" / "seed_workspace"
@@ -164,3 +166,26 @@ def test_seed_target_is_separate_from_the_repo_the_app_reads(monkeypatch):
     both = target(github_repo="team/real", seed_github_repo="me/seed-test", github_token="tok")
     assert both == ("me/seed-test", "tok")
     assert target(seed_github_repo="me/seed-test", github_use_gh_cli=True) == ("me/seed-test", "gho_cli")
+
+
+def test_notion_seed_target_is_a_separate_connection():
+    def target(**kw):
+        return notion_seed_target(Settings(_env_file=None, **kw))
+
+    with pytest.raises(ConnectorError, match="SEED_NOTION_TOKEN"):
+        target(notion_token="ntn_real", notion_parent_page_id="p")  # NOTION_TOKEN alone is never a seed target
+    with pytest.raises(ConnectorError, match="same as NOTION_TOKEN"):
+        target(notion_token="ntn_real", seed_notion_token="ntn_real", notion_parent_page_id="p")
+    with pytest.raises(ConnectorError, match="NOTION_PARENT_PAGE_ID"):
+        target(seed_notion_token="ntn_seed")
+    assert target(notion_token="ntn_real", seed_notion_token="ntn_seed", notion_parent_page_id="p") == ("ntn_seed", "p")
+
+
+def test_seed_workspace_settings_swap_in_the_seed_targets():
+    settings = Settings(_env_file=None, github_repo="team/real", seed_github_repo="me/seed",
+                        notion_token="ntn_real", seed_notion_token="ntn_seed", discord_guild_id="42")
+    seeded = seed_workspace_settings(settings, ["github", "notion", "discord"])
+    assert (seeded.github_repo, seeded.notion_token) == ("me/seed", "ntn_seed")
+    assert seeded.discord_guild_id == "42"  # no separate seed setting yet: read as configured
+    with pytest.raises(ConnectorError, match="SEED_NOTION_TOKEN"):
+        seed_workspace_settings(Settings(_env_file=None), ["notion"])

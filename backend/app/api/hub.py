@@ -1,4 +1,4 @@
-"""/connect: connect the team's tools (GitHub for now) and import their data.
+"""/connect: the connect pages, the shared local-only guard, and GitHub sign-in / repo choice / import.
 
 Choices are saved to `.env` (still the single source of configuration) and take effect immediately.
 These routes handle tokens, so they only answer requests addressed to this machine (127.0.0.1 /
@@ -45,7 +45,7 @@ router = APIRouter(dependencies=[Depends(local_only)], tags=["connect"])
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def _page(name: str) -> FileResponse:
+def page(name: str) -> FileResponse:
     return FileResponse(WEB_DIR / name, headers={"Cache-Control": "no-cache"})
 
 
@@ -67,12 +67,12 @@ def _account() -> dict | None:
 
 @router.get("/connect", include_in_schema=False)
 def connect_page() -> FileResponse:
-    return _page("connect.html")
+    return page("connect.html")
 
 
 @router.get("/connect/github", include_in_schema=False)
 def github_page() -> FileResponse:
-    return _page("connect-github.html")
+    return page("connect-github.html")
 
 
 @router.get("/api/connections")

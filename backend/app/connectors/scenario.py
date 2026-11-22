@@ -21,6 +21,7 @@ from .github import format_issue_text
 
 SCENARIO_REPO = "example/shoplite"
 GITHUB_REPO_URL = f"https://github.com/{SCENARIO_REPO}"
+NOTION_URL = "https://www.notion.so/shoplite"  # prefix of every scenario page URL
 DISCORD_GUILD_ID = "100000000000000000"
 _PLACEHOLDER = re.compile(r"\{\{\s*([a-z]+\.[a-z]+\.[\w-]+)\s*\}\}")
 _FAKE_TS = "2026-10-01T09:00:00+00:00"
@@ -49,7 +50,7 @@ class ScenarioConnector:
                 urls[f"github.pull.{pull['key']}"] = f"{GITHUB_REPO_URL}/pull/{number}"
             for page in s["notion"]["pages"]:
                 page_hex = _notion_id(page["key"]).replace("-", "")
-                urls[f"notion.page.{page['key']}"] = f"https://www.notion.so/shoplite/{page['key']}-{page_hex}"
+                urls[f"notion.page.{page['key']}"] = f"{NOTION_URL}/{page['key']}-{page_hex}"
             for channel in s["discord"]["channels"]:
                 for thread in channel["threads"]:
                     thread_id += 1

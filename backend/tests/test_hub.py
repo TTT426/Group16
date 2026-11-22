@@ -118,7 +118,7 @@ def saved(monkeypatch):
 
 def test_pages_and_local_only_guard():
     client = TestClient(app)
-    assert 'id="gh-chip"' in client.get("/connect").text
+    assert 'id="github-chip"' in client.get("/connect").text
     assert 'id="step-login"' in client.get("/connect/github").text
     assert client.get("/connect", headers={"host": "evil.example"}).status_code == 403
     cross = client.post("/api/github/logout", headers={"origin": "https://evil.example"})
