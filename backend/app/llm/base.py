@@ -1,7 +1,8 @@
 """Provider-neutral LLM interface.
 
-Every part of the app talks to the model through `LLMProvider`. The project uses the
-Claude Code CLI (`claude_cli`); `fake` replaces it in tests and offline development.
+Every part of the app talks to the model through `LLMProvider`. Providers: the Claude Code CLI
+(`claude_cli`, the default), the Anthropic API (`anthropic_api`), OpenAI or an OpenAI-compatible API
+(`openai_api`) and a local Ollama server (`ollama`); `fake` replaces them in tests and offline development.
 """
 
 from pathlib import Path

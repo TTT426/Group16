@@ -1,4 +1,4 @@
-"""Pull a JSON object out of a model reply.
+"""Pull a JSON object out of a model reply, and prepare JSON schemas for strict structured output.
 
 We ask models to answer in JSON instead of relying on provider-specific
 structured-output features, so the same prompt works for CLI and API providers.
@@ -32,3 +32,17 @@ def extract_json_object(text: str) -> dict:
                 pass
             start = candidate.find("{", start + 1)
     raise ValueError("No JSON object found in model reply.")
+
+
+def strict_schema(schema: dict) -> dict:
+    """A copy of `schema` in the strict form API structured outputs require.
+
+    Every object gets `additionalProperties: false` and lists all its properties as required.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    out = {key: (strict_schema(value) if key == "items" else value) for key, value in schema.items()}
+    if schema.get("type") == "object":
+        props = {key: strict_schema(value) for key, value in schema.get("properties", {}).items()}
+        out.update(properties=props, required=list(props), additionalProperties=False)
+    return out
