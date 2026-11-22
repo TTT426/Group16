@@ -51,3 +51,9 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Why:** Connecting real tools meant editing `.env` and working out token permissions by hand, which is too hard for new members. `GITHUB_REPO` meant both "the repo to read" and "the empty test repo the seed script writes into", so after connecting the team's real repo, seeding would have written fake content into it (including commits to main). GitHub items from different repos with the same number overwrote each other.
 **What the mainly change/improve** : Connect tools page (GitHub), separate seed repo
 **Led by:** @gdpps1028
+
+## 2026-11-22 — Connect Notion from the browser; separate seed connection (proposal, pending team confirmation)
+**What:** "Connect tools" gets a Notion flow (`/connect/notion`): a workspace owner creates an internal connection in Notion's Developer portal, the user pastes its API token, shares pages, and imports. The seed script writes Notion pages with a separate connection (`SEED_NOTION_TOKEN`) and refuses to run when it equals `NOTION_TOKEN`. `ingest.py --seed-repo` is renamed `--seed-workspace` and reads every configured seed setting.
+**Why:** The app imports every page its connection can see, so seeding with the same connection would mix fake scenario pages into the team's real workspace. Notion has no sign-in a local app can use without a server-side secret, so a guided "paste the API token" flow is the simplest option.
+**What the mainly change/improve** : Connect tools page (Notion), separate seed connection
+**Led by:** @gdpps1028
