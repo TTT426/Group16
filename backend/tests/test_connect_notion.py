@@ -58,6 +58,12 @@ def saved(monkeypatch):
     return calls
 
 
+def test_page_and_local_only_guard():
+    client = TestClient(app)
+    assert 'id="step-secret"' in client.get("/connect/notion").text
+    assert client.get("/api/notion/status", headers={"host": "evil.example"}).status_code == 403
+
+
 def test_save_token_keeps_only_valid_tokens_and_never_echoes_them(monkeypatch, saved):
     def fake_check(token, client=None):
         if token != "ntn_good":

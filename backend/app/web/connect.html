@@ -32,9 +32,12 @@
       <div class="row" id="github-actions"></div>
     </section>
 
-    <section class="panel tool-card soon" data-tool="notion">
-      <header><h2>Notion</h2><span class="chip">即將推出</span></header>
-      <p class="what">頁面與資料庫（規格、會議紀錄、決策）</p>
+    <section class="panel tool-card" data-tool="notion">
+      <header><h2>Notion</h2><span class="chip" id="notion-chip">讀取中…</span></header>
+      <p class="what">分享給 connection 的頁面（規格、會議紀錄、決策）</p>
+      <dl class="facts" id="notion-facts" hidden></dl>
+      <p class="notice" id="notion-msg" hidden></p>
+      <div class="row" id="notion-actions"></div>
     </section>
 
     <section class="panel tool-card soon" data-tool="discord">
@@ -117,8 +120,35 @@
         disconnectButton("github", `中斷與 ${g.repo} 的連接？`, renderGitHub));
     }
 
+    // ---- Notion ----
+    async function renderNotion() {
+      let s;
+      try { s = await api("/api/notion/status"); }
+      catch (e) { chip("notion", "讀取失敗"); return message("notion", e.message, "error"); }
+      if (!s.connected) {
+        chip("notion", "尚未連接"); facts("notion", []); message("notion", "");
+        return actions("notion", connectButton("notion", "連接 Notion →"));
+      }
+      const c = s.check;
+      const pages = c ? `${c.pages.length}${c.more_pages ? "+" : ""} 個頁面` : "—";
+      const ready = c && c.pages.length > 0;
+      chip("notion", !ready ? "未完成" : s.documents ? "已連接" : "尚未匯入", ready && s.documents ? "done" : "warn");
+      facts("notion", [
+        ["Connection", c ? `${c.connection}${c.workspace ? `（${c.workspace}）` : ""}` : "—"],
+        ["看得到", pages],
+        ["已匯入", `${s.documents} 份文件`],
+      ]);
+      message("notion", s.error ? `${s.error}請按「更改設定」重新設定。`
+        : !ready ? "Connection 還看不到任何頁面，請按「更改設定」把頁面分享給它。" : "");
+      actions("notion",
+        ready ? importButton("notion", s.documents > 0, "匯入中… 頁面越多越久。", renderNotion) : null,
+        settingsButton("notion"),
+        disconnectButton("notion", "中斷與 Notion 的連接？", renderNotion));
+    }
+
     loadStatus($("status"));
     renderGitHub();
+    renderNotion();
   </script>
 </body>
 </html>
