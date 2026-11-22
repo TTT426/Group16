@@ -54,17 +54,18 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **What the mainly change/improve** : Connect tools page (GitHub), separate seed repo
 **Led by:** @gdpps1028
 
-## 2026-11-22 - Code steward 審閱：PR #13
-**What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/12)
-**Outcome**：approved
-**What the mainly change/improve** : 
-1. Add more readable GUI interface 
-2. connect GitHub from the browser
+## 2026-11-22 — Code steward 審閱：PR #13
+
+**What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/13) \
+**Outcome:** approved \
+**What the mainly change/improve:** \
+1. Add more readable GUI interface \
+2. Connect GitHub from the browser \
 **Led by:** @gdpps1028
 
-
 ## 2026-11-22 — Follow-up to the PR #11 steward review
-**What:** Correction and follow-up to the 2026-11-21 entry. TTT426 reviewed #11 as code steward and merged it. The feedback was first left as a comment; the formal GitHub approval was submitted afterwards, on 2026-11-22. After the merge, @hojinpongcs09-lab reported that `test_config_lists_modes_and_scenarios` fails on a clean checkout (`/api/config` uses `get_session_factory()` instead of the injected session).
-**Follow-up:** : Just record this bug now. 
-**Process note (proposal, pending team confirmation):** Submit reviews as formal GitHub reviews before merging, and run the tests on a clean checkout before approving.
+
+**What:** Correction and follow-up to the 2026-11-21 entry. TTT426 reviewed #11 as code steward and merged it. The feedback was first left as a comment; the formal GitHub approval was submitted afterwards, on 2026-11-22. After the merge, @hojinpongcs09-lab reported that `test_config_lists_modes_and_scenarios` fails on a clean checkout (`/api/config` uses `get_session_factory()` instead of the injected session). \
+**Follow-up:** : Just record this bug now. \
+**Process note (proposal, pending team confirmation):** Submit reviews as formal GitHub reviews before merging, and run the tests on a clean checkout before approving. \
 **Led by:** @TTT426
