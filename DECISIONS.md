@@ -25,7 +25,8 @@
 **Status:** 已確認（見下方〈2026-11-21 小組討論結果〉；Code steward 已核准 PR #10）。`LLM_PROVIDER` 預設 `auto` 由〈完整版〉提案改為只用 Claude CLI（待確認）。細節見 `docs/PROJECT_PLAN.md` §10。
 
 ## 2026-11-21 — Code steward 審閱：PR #10
-**What:** Nathan 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10)結果：核准。
+**What:** Nathan 以 code steward 身分審閱 [#10](https://github.com/TTT426/Group16/pull/10)
+**Outcome**：approved
 **What the mainly change/improve** : 降低外部依賴：SQLite、fastembed、一鍵啟動
 **Led by:** @boanhsu1213
 
@@ -41,7 +42,8 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Led by:** @boanhsu1213
 
 ## 2026-11-21 — Code steward 審閱：PR #11
-**What:** TTT426 以 code steward 身分審閱 [#11](https://github.com/TTT426/Group16/pull/11)結果：核准。
+**What:** TTT426 以 code steward 身分審閱 [#11](https://github.com/TTT426/Group16/pull/11)
+**Outcome**：approved
 **What the mainly change/improve** : 完整版 MVP 功能串接、修關於 System Prompt 的穩定性問題
 **More comment** : should use PR templatement and avoid plug in too much infomation in a same  
 **Led by:** @boanhsu1213
@@ -57,3 +59,20 @@ Mac 環境上的部署由 @hojinpongcs09-lab 完成並測試
 **Why:** The app imports every page its connection can see, so seeding with the same connection would mix fake scenario pages into the team's real workspace. Notion has no sign-in a local app can use without a server-side secret, so a guided "paste the API token" flow is the simplest option.
 **What the mainly change/improve** : Connect tools page (Notion), separate seed connection
 **Led by:** @gdpps1028
+
+## 2026-11-22 — Code steward 審閱：PR #13
+
+**What:** TTT426 以 code steward 身分審閱 [#13](https://github.com/TTT426/Group16/pull/13) \
+**Outcome:** approved \
+**What the mainly change/improve:** \
+1. Add more readable GUI interface 
+2. Connect GitHub from the browser
+
+**Led by:** @gdpps1028 \
+
+## 2026-11-22 — Follow-up to the PR #11 steward review
+
+**What:** Correction and follow-up to the 2026-11-21 entry. TTT426 reviewed #11 as code steward and merged it. The feedback was first left as a comment; the formal GitHub approval was submitted afterwards, on 2026-11-22. After the merge, @hojinpongcs09-lab reported that `test_config_lists_modes_and_scenarios` fails on a clean checkout (`/api/config` uses `get_session_factory()` instead of the injected session). \
+**Follow-up:** : Just record this bug now. \
+**Process note (proposal, pending team confirmation):** Submit reviews as formal GitHub reviews before merging, and run the tests on a clean checkout before approving. \
+**Led by:** @TTT426
