@@ -76,8 +76,9 @@ AI-generated work may be merged only when:
    their results, and any tests not run with a reason. A failing check blocks
    approval until it is fixed and rerun.
 2. The designated code steward submits a formal GitHub review with at least
-   one substantive comment and approval before the PR is merged. The comment
-   must point to a behavior, risk, or verification result in the diff.
+   one substantive comment and approval before the PR is merged. The review
+   lists the files or areas inspected; its comment points to a behavior, risk,
+   or verification result in the diff.
 3. The implementation can be clearly explained by a team member other than
    the person who prompted the AI.
 4. Referenced APIs and library features are checked against official
