@@ -86,3 +86,7 @@ We will not claim preliminary success unless:
 If any threshold is missed, we will report the result as inconclusive or
 unsuccessful and document the observed failure rather than changing the
 threshold after testing.
+
+## Week 12 Peer Review Adjustment for Phase 3
+
+An outside participant will connect and re-import one real GitHub test repository, then use its cited answer to introduce the project while we record setup blockers, time, facilitator help, and whether the source links support the answer. We will also check whether the answer survives tab changes, whether a wrong paragraph can be reported, and whether missing AI service or connector credentials produce recoverable messages without exposing secrets.
