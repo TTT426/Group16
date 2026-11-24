@@ -43,10 +43,12 @@ record must include:
 One-off syntax questions do not require a full log unless their answers cause a
 significant project decision.
 
-Pull requests must state whether AI was used. If a significant AI-assisted
-choice affects architecture, data schema, dependencies, security, or team
-workflow, the final human decision and rationale must also be recorded in
-`DECISIONS.md`.
+Every pull request must state whether AI was used. If it was, the PR must name
+the tool and model, identify the files or decisions AI influenced, link the
+prompt/output record, and explain what a human changed or rejected. The
+reviewer checks these fields before approval. If an AI-assisted choice affects
+architecture, data schema, dependencies, security, or team workflow, the final
+human decision and rationale must also be recorded in `DECISIONS.md`.
 
 ### Example Interaction
 
@@ -70,8 +72,12 @@ branch and reviewed pull-request workflow.
 
 AI-generated work may be merged only when:
 
-1. Existing automated tests and linters pass, when available.
-2. A human reviewer checks the changed files.
+1. The PR lists the exact test and lint commands run on a clean checkout,
+   their results, and any tests not run with a reason. A failing check blocks
+   approval until it is fixed and rerun.
+2. The designated code steward submits a formal GitHub review with at least
+   one substantive comment and approval before the PR is merged. The comment
+   must point to a behavior, risk, or verification result in the diff.
 3. The implementation can be clearly explained by a team member other than
    the person who prompted the AI.
 4. Referenced APIs and library features are checked against official
